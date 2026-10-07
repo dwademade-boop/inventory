@@ -1,0 +1,775 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Erik's personal inventory: everything he owns, with buy links and live market values.">
+<style>:root{color-scheme:light}body{margin:0;font:14px/1.45 system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Erik's Inventory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+</head><body>
+<style>
+/* Layout: a catalogue register — summary ledger on top, filter rail, photo grid of tagged items, detail drawer from the right (bottom sheet on phones). */
+:root{
+  --bg:#EDEFF2; --surface:#FFFFFF; --sunk:#E2E6EB; --ink:#12161B; --muted:#5B6672; --line:#D3D9E0;
+  --accent:#2B45D8; --accent-ink:#FFFFFF; --accent-soft:#E0E5FF;
+  --tag:#FFD84A; --tag-ink:#2A2200;
+  --good:#1E7F4F; --good-soft:#DDF3E7; --warn:#A35A00; --warn-soft:#FDEBD3; --bad:#B42318;
+  --tile-l:90%; --tile-fg-l:36%; --shadow:0 1px 2px rgba(18,22,27,.06),0 8px 24px rgba(18,22,27,.08);
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Figtree",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0D1014; --surface:#161A20; --sunk:#1D232B; --ink:#E8ECF1; --muted:#8E99A6; --line:#2A313A;
+  --accent:#8A9BFF; --accent-ink:#0D1014; --accent-soft:#1F2544; --tag:#E8C33A; --tag-ink:#1C1600;
+  --good:#5CCB92; --good-soft:#15301F; --warn:#F0A54A; --warn-soft:#33240F; --bad:#FF8A80;
+  --tile-l:19%; --tile-fg-l:74%; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1014; --surface:#161A20; --sunk:#1D232B; --ink:#E8ECF1; --muted:#8E99A6; --line:#2A313A;
+  --accent:#8A9BFF; --accent-ink:#0D1014; --accent-soft:#1F2544; --tag:#E8C33A; --tag-ink:#1C1600;
+  --good:#5CCB92; --good-soft:#15301F; --warn:#F0A54A; --warn-soft:#33240F; --bad:#FF8A80;
+  --tile-l:19%; --tile-fg-l:74%; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:max(16px,3vw);padding-block:20px 80px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px}
+.brandmark{display:flex;flex-direction:column;gap:2px}
+.eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(34px,5.4vw,56px);line-height:.95;letter-spacing:-.025em;margin:0;text-wrap:balance}
+.top-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 14px;font-weight:600;font-size:14px;text-decoration:none;color:var(--ink);white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--bad)}
+.btn svg{width:17px;height:17px;flex:none}
+.btn[disabled]{opacity:.5;cursor:default}
+
+/* ledger */
+.ledger{margin-top:22px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.ledger>div{padding:14px 18px;border-left:1px solid var(--line);min-width:0}
+.ledger>div:first-child{border-left:0}
+.ledger .k{font-size:12px;color:var(--muted);font-weight:500}
+.ledger .v{font-family:var(--f-display);font-weight:700;font-size:clamp(22px,3vw,30px);letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.15}
+.ledger .s{font-size:12px;color:var(--muted)}
+@media (max-width:720px){.ledger{grid-template-columns:repeat(2,minmax(0,1fr))}.ledger>div:nth-child(3){border-left:0}.ledger>div:nth-child(n+3){border-top:1px solid var(--line)}}
+
+/* notice */
+.notice{margin-top:14px;display:flex;flex-wrap:wrap;align-items:center;gap:12px;justify-content:space-between;background:var(--accent-soft);border-radius:12px;padding:12px 16px}
+.notice p{margin:0;min-width:0;flex:1 1 280px}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;flex:1 1 100%}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+
+/* tabs & tools */
+.tabs{margin-top:26px;display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.tab{border:0;background:none;padding:10px 14px 12px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-color:var(--ink)}
+.tab .n{font-family:var(--f-mono);font-size:11px;color:var(--muted);margin-left:4px}
+.tools{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.search{flex:1 1 240px;display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:0 12px;min-width:0}
+.search svg{width:18px;height:18px;color:var(--muted);flex:none}
+.search input{border:0;background:none;outline:none;padding:10px 0;width:100%;min-width:0}
+select.sel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 10px}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:8px 10px;color:var(--muted);display:flex}
+.seg button[aria-pressed="true"]{background:var(--sunk);color:var(--ink)}
+.seg svg{width:18px;height:18px}
+.chips{margin-top:12px;display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:500;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:hsl(var(--h) 60% 50%)}
+.chip.flag[aria-pressed="true"]{background:var(--tag);color:var(--tag-ink);border-color:var(--tag)}
+
+/* grid */
+.grid{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+@media (max-width:480px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}
+.card{position:relative;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:0;overflow:hidden;display:flex;flex-direction:column;transition:transform .15s,box-shadow .15s}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.thumb{aspect-ratio:4/3;width:100%;max-width:100%;background:hsl(var(--h) 45% var(--tile-l));display:grid;place-items:center;overflow:hidden;position:relative}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .ico{width:38%;max-width:84px;color:hsl(var(--h) 45% var(--tile-fg-l));opacity:.9}
+.thumb .ico svg{width:100%;height:auto;display:block}
+.tagno{position:absolute;left:8px;top:8px;background:var(--surface);color:var(--ink);font-family:var(--f-mono);font-size:10.5px;padding:3px 7px 3px 12px;border-radius:4px;letter-spacing:.04em}
+.tagno::before{content:"";position:absolute;left:4px;top:50%;width:4px;height:4px;margin-top:-2px;border-radius:50%;background:var(--muted)}
+.qty{position:absolute;right:8px;top:8px;background:var(--ink);color:var(--bg);font-family:var(--f-mono);font-size:11px;padding:2px 7px;border-radius:999px}
+.cbody{padding:10px 12px 12px;display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
+.cname{font-weight:600;line-height:1.25;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cbrand{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crow{margin-top:auto;padding-top:6px;display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap}
+.price{font-family:var(--f-mono);font-size:13px;font-weight:500}
+.price small{color:var(--muted);font-weight:400}
+.pills{display:flex;gap:4px;flex-wrap:wrap}
+.pill{font-size:11px;font-weight:600;padding:2px 7px;border-radius:999px;background:var(--sunk);color:var(--muted);white-space:nowrap}
+.pill.live{background:var(--tag);color:var(--tag-ink)}
+.pill.refill{background:var(--good-soft);color:var(--good)}
+.pill.heart{background:var(--warn-soft);color:var(--warn)}
+.pill.gone{background:var(--sunk);color:var(--muted)}
+.card.isgone .thumb{filter:grayscale(1);opacity:.75}
+
+/* list view */
+.list{margin-top:18px;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.row{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 14px;border-top:1px solid var(--line);width:100%;text-align:left;background:none;border-left:0;border-right:0;border-bottom:0}
+.row:first-child{border-top:0}
+.row:hover{background:var(--sunk)}
+.row .thumb{aspect-ratio:1;border-radius:10px;width:56px}
+.row .thumb .ico{width:50%}
+.row .meta{min-width:0}
+.row .meta .cname{-webkit-line-clamp:1}
+.row .right{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+
+/* subscriptions */
+.subsum{margin-top:18px;display:flex;flex-wrap:wrap;gap:10px 28px;align-items:baseline}
+.subsum b{font-family:var(--f-display);font-size:28px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.subsum span{color:var(--muted);font-size:13px}
+
+.empty{margin-top:24px;padding:40px 20px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:14px}
+.empty h3{font-family:var(--f-display);color:var(--ink);font-size:20px;margin:0 0 6px}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(8,10,14,.45);z-index:20;opacity:0;pointer-events:none;transition:opacity .2s}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(520px,100%);background:var(--surface);z-index:21;transform:translateX(102%);transition:transform .25s ease;display:flex;flex-direction:column;box-shadow:var(--shadow);padding-top:env(safe-area-inset-top,0px)}
+.drawer.on{transform:none}
+@media (max-width:640px){.drawer{top:auto;left:0;width:100%;max-height:92%;border-radius:18px 18px 0 0;transform:translateY(102%);padding-top:0;padding-bottom:env(safe-area-inset-bottom,0px)}}
+.dhead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.dhead .eyebrow{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icon-btn{border:0;background:var(--sunk);border-radius:50%;width:34px;height:34px;display:grid;place-items:center;flex:none}
+.icon-btn svg{width:18px;height:18px}
+.dbody{overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:18px}
+.hero{border-radius:14px;overflow:hidden}
+.hero .thumb{aspect-ratio:4/3}
+.hero .thumb img{object-fit:contain;background:var(--sunk)}
+.dtitle{font-family:var(--f-display);font-weight:700;font-size:28px;line-height:1.05;letter-spacing:-.02em;margin:0;text-wrap:balance}
+.dsub{color:var(--muted);margin-top:4px}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.facts{display:grid;grid-template-columns:minmax(110px,auto) minmax(0,1fr);border-top:1px solid var(--line)}
+.facts dt,.facts dd{margin:0;padding:9px 0;border-bottom:1px solid var(--line)}
+.facts dt{color:var(--muted);font-size:13px;padding-right:12px}
+.facts dd{overflow-wrap:anywhere}
+.valuebox{background:var(--sunk);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.valuebox .big{font-family:var(--f-display);font-weight:700;font-size:30px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.valuebox .delta{font-family:var(--f-mono);font-size:12px}
+.up{color:var(--good)} .down{color:var(--bad)}
+.spark{width:100%;height:64px;display:block}
+.note{background:var(--sunk);border-radius:12px;padding:12px 14px;white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* forms */
+.form{display:flex;flex-direction:column;gap:14px}
+.f2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:420px){.f2{grid-template-columns:1fr}}
+label.fld{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;min-width:0}
+label.fld span.h{font-weight:400;color:var(--muted);font-size:12px}
+.fld input,.fld select,.fld textarea{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px 12px;width:100%;min-width:0;font-weight:400;font-size:15px}
+.fld textarea{min-height:80px;resize:vertical}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:14px}
+.check input{margin-top:3px;width:18px;height:18px;accent-color:var(--accent)}
+.photo-drop{border:1.5px dashed var(--line);border-radius:14px;overflow:hidden;display:grid;place-items:center;aspect-ratio:16/9;max-width:100%;background:var(--bg);position:relative;cursor:pointer;text-align:center;color:var(--muted);padding:12px}
+.photo-drop img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.photo-drop.over{border-color:var(--accent)}
+.reasons{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.reasons button{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px;font-weight:600;text-align:left}
+.reasons button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.dfoot{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.hint{font-size:12.5px;color:var(--muted)}
+.err{color:var(--bad);font-size:13px}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;opacity:0;transition:.2s;z-index:40;pointer-events:none;max-width:calc(100% - 32px)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:15;border-radius:999px;padding:14px 18px;box-shadow:var(--shadow)}
+@media (min-width:721px){.fab{display:none}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brandmark">
+      <span class="eyebrow" id="who">Erik's personal inventory</span>
+      <h1>Everything I Own</h1>
+    </div>
+    <div class="top-actions">
+      <button class="btn ghost" id="exportBtn" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Spreadsheet</button>
+      <button class="btn primary" id="addBtn" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add item</button>
+    </div>
+  </header>
+
+  <section class="ledger" aria-label="Summary">
+    <div><div class="k">Things I own</div><div class="v" id="sCount">—</div><div class="s" id="sCountS">&nbsp;</div></div>
+    <div><div class="k">Estimated worth</div><div class="v" id="sWorth">—</div><div class="s" id="sWorthS">&nbsp;</div></div>
+    <div><div class="k">Recurring costs</div><div class="v" id="sMonthly">—</div><div class="s" id="sMonthlyS">&nbsp;</div></div>
+    <div><div class="k">Let go</div><div class="v" id="sGone">—</div><div class="s" id="sGoneS">&nbsp;</div></div>
+  </section>
+
+  <div class="notice" id="importNote" hidden>
+    <p id="importText"></p>
+    <button class="btn primary" id="importBtn">Bring photos in</button>
+    <div class="bar" id="importBar" hidden><i></i></div>
+  </div>
+
+  <nav class="tabs" role="tablist" id="tabs">
+    <button class="tab" role="tab" data-tab="things" aria-selected="true">Things<span class="n" id="nThings"></span></button>
+    <button class="tab" role="tab" data-tab="recurring" aria-selected="false">Subscriptions &amp; bills<span class="n" id="nRec"></span></button>
+    <button hidden class="tab" role="tab" data-tab="docs" aria-selected="false">Documents<span class="n" id="nDocs"></span></button>
+    <button class="tab" role="tab" data-tab="gone" aria-selected="false">Let go<span class="n" id="nGone"></span></button>
+  </nav>
+
+  <div class="tools" id="tools">
+    <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" type="search" placeholder="Search name, brand, notes…" aria-label="Search"></label>
+    <select class="sel" id="sort" aria-label="Sort">
+      <option value="no">Catalogue order</option>
+      <option value="recent">Recently added</option>
+      <option value="name">Name A–Z</option>
+      <option value="value">Worth, high to low</option>
+      <option value="date">Purchase date, newest</option>
+    </select>
+    <div class="seg" role="group" aria-label="Layout">
+      <button id="vGrid" aria-pressed="true" title="Photo grid"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+      <button id="vList" aria-pressed="false" title="List"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg></button>
+    </div>
+  </div>
+  <div class="chips" id="chips"></div>
+
+  <main id="view"><div class="empty"><h3>Opening your inventory…</h3>Your things load in a moment.</div></main>
+</div>
+
+<button class="btn primary fab" id="fab" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add</button>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dLabel">
+  <div class="dhead"><span class="eyebrow" id="dLabel"></span><button class="icon-btn" id="dClose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="dbody" id="dBody"></div>
+  <div class="dfoot" id="dFoot" hidden></div>
+</aside>
+<div class="toast" id="toast" role="status"></div>
+<input type="file" id="filePick" accept="image/*" hidden>
+
+<script type="application/json" id="inv-data">{"updated":"2026-10-07","items":[{"added":"2026-09-30","brand":"Apple","buySimilar":true,"buyUrl":"https://swappa.com/buy/apple-iphone-11","category":"Tech","history":[{"d":"2026-09-30","src":"Swappa avg sale","v":145},{"d":"2026-10-01","src":"Swappa avg sale","v":145},{"d":"2026-10-02","src":"Swappa avg sale","v":145},{"d":"2026-10-03","src":"Swappa avg sale","v":145},{"d":"2026-10-04","src":"Swappa avg sale","v":145},{"d":"2026-10-06","src":"Swappa avg sale","v":145},{"d":"2026-10-07","src":"Swappa avg sale","v":145}],"kind":"item","name":"iPhone 11","no":1,"notes":"Hand-me-down from Dad (his company pays for his upgraded phone)","price":400,"sentimental":true,"status":"owned","trackValue":true,"usage":"Everyday","value":145,"valueRange":"$138\u2013$207","valueSource":"Swappa avg sale (64GB $138, 128GB $149, 256GB $207; storage not recorded)","valueUpdated":"2026-10-07","valueUrl":"https://swappa.com/listings/apple-iphone-11","id":"i001"},{"added":"2026-09-30","brand":"DJI","buyUrl":"https://store.dji.com/product/mini-2","category":"Camera & Video","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"history":[{"d":"2026-09-30","src":"eBay used + MPB","v":280}],"kind":"item","name":"DJI Drone Mini 2 Fly More Combo","no":2,"status":"gone","trackValue":true,"usage":"Every Month","value":280,"valueRange":"$255\u2013$330","valueSource":"eBay used + MPB used, 11 listings","valueUpdated":"2026-09-30","id":"i002"},{"added":"2026-09-30","brand":"Honda","buySimilar":true,"buyUrl":"https://www.cargurus.com/Cars/t-Used-Honda-Civic-Coupe-EX-t38595","category":"Vehicle","history":[{"d":"2026-09-30","src":"130k-mile EX coupe listings","v":9000},{"d":"2026-10-01","src":"KBB private party, mileage-adj.","v":9000},{"d":"2026-10-02","src":"CarGurus listings, mileage-adj.","v":9000},{"d":"2026-10-03","src":"CarGurus listings, mileage-adj.","v":8500},{"d":"2026-10-04","src":"CarGurus listings, mileage-adj.","v":8600},{"d":"2026-10-06","src":"KBB private party, mileage-adj.","v":8600},{"d":"2026-10-07","src":"KBB private party, mileage-adj.","v":8600}],"kind":"item","mileage":130000,"mileageDate":"2026-09-30","name":"Civic Coupe EX","no":3,"status":"owned","trackValue":true,"usage":"Every Week","value":8600,"valueRange":"$6,300\u2013$11,000","valueSource":"KBB private party EX coupe: 2012 $6,260\u20138,235, 2013 $6,595\u20138,620 (Good $7,745), 2014 $8,680\u201311,030; adj. for ~130k mi (year not recorded; estimated across 2012\u20132014)","valueUpdated":"2026-10-07","valueUrl":"https://www.kbb.com/honda/civic/","id":"i003"},{"added":"2026-09-30","brand":"Sony","category":"Camera & Video","closed":{"amount":1650,"date":"2026-01-16","reason":"sold"},"kind":"item","name":"Camera RX10 Mark IV","no":4,"notes":"Sold for $1,650 on Jan 16, 2026","price":1398.97,"status":"sold","trackValue":true,"usage":"Every Week","id":"i004"},{"added":"2026-09-30","brand":"Cardinal By Spin Master Games","buySimilar":true,"buyUrl":"https://www.explodingkittens.com/collections/puzzles","category":"Art & Keepsakes","kind":"item","name":"Exploding Kittens Puzzle Framed #1","no":5,"status":"owned","id":"i005"},{"added":"2026-09-30","category":"Art & Keepsakes","kind":"item","name":"Framed Animal Celeb Puzzle","no":6,"status":"owned","id":"i006"},{"added":"2026-09-30","brand":"Cardinal By Spin Master Games","buySimilar":true,"buyUrl":"https://www.explodingkittens.com/collections/puzzles","category":"Art & Keepsakes","kind":"item","name":"Exploding Kittens Puzzle Framed #2","no":7,"status":"owned","id":"i007"},{"added":"2026-09-30","brand":"Rode","buyUrl":"https://rode.com/en/products/wireless-go-ii","category":"Tech","history":[{"d":"2026-09-30","src":"MPB used","v":125},{"d":"2026-10-01","src":"MPB used","v":115},{"d":"2026-10-02","src":"MPB + Adorama used","v":119},{"d":"2026-10-03","src":"MPB used","v":119},{"d":"2026-10-04","src":"MPB used","v":119},{"d":"2026-10-06","src":"MPB used","v":119},{"d":"2026-10-07","src":"MPB used","v":115}],"kind":"item","name":"Wireless Go II Microphones","no":8,"price":299,"status":"owned","trackValue":true,"usage":"Every Month","value":115,"valueRange":"$107\u2013$148","valueSource":"MPB used, 8 listings $107\u2013$148 (Excellent $112, Good $119)","valueUpdated":"2026-10-07","id":"i008"},{"added":"2026-09-30","brand":"Seagate","buySimilar":true,"buyUrl":"https://www.seagate.com/products/external-hard-drives/one-touch-external-drives/","category":"Storage","kind":"item","name":"4 TB Harddrive #1","no":9,"status":"owned","usage":"Every Week","id":"i009"},{"added":"2026-09-30","brand":"Seagate","buySimilar":true,"buyUrl":"https://www.seagate.com/products/external-hard-drives/one-touch-external-drives/","category":"Storage","history":[{"d":"2026-09-30","src":"eBay pre-owned","v":95},{"d":"2026-10-02","src":"eBay pre-owned asking","v":100},{"d":"2026-10-03","src":"eBay used comps","v":100},{"d":"2026-10-04","src":"eBay pre-owned asking","v":110},{"d":"2026-10-06","src":"eBay pre-owned asking","v":110},{"d":"2026-10-07","src":"eBay pre-owned asking","v":110}],"kind":"item","name":"4 TB Harddrive #2","no":10,"price":102.13,"purchased":"2022-03-18","status":"owned","trackValue":true,"usage":"Every Week","value":110,"valueRange":"$100\u2013$140","valueSource":"eBay pre-owned Seagate 4TB portable, 5 listings $110\u2013$150 asking","valueUpdated":"2026-10-07","id":"i010"},{"added":"2026-09-30","brand":"Western Digital (WD)","buyUrl":"https://www.westerndigital.com/products/portable-drives/wd-my-passport-usb-3-0-hdd?sku=WDBYVG0020BBK-WESN","category":"Storage","history":[{"d":"2026-09-30","src":"eBay pre-owned","v":65},{"d":"2026-10-01","src":"PayMore used + eBay","v":65},{"d":"2026-10-02","src":"PayMore used","v":55},{"d":"2026-10-03","src":"PayMore used","v":55},{"d":"2026-10-04","src":"PayMore used","v":50},{"d":"2026-10-06","src":"PayMore used","v":45},{"d":"2026-10-07","src":"PayMore used","v":45}],"kind":"item","name":"WD 2 TB Harddrive","no":11,"price":69.99,"purchased":"2025-04-07","status":"owned","trackValue":true,"value":45,"valueRange":"$40\u2013$70","valueSource":"PayMore sold My Passport 2TB: Good $44.99, like-new boxed $69.99","valueUpdated":"2026-10-07","id":"i011"},{"added":"2026-09-30","buySimilar":true,"buyUrl":"https://www.anker.com/collections/usb-c-to-usb-a-adapter","category":"Tech","kind":"item","name":"USB C to USB Adapter","no":12,"price":5,"purchased":"2025-05-19","qty":2,"status":"owned","id":"i012"},{"added":"2026-09-30","buySimilar":true,"buyUrl":"https://www.anker.com/products/a8355","category":"Tech","kind":"item","name":"USB C Hub 5-in-1 with 4K HDMI","no":13,"price":9.99,"purchased":"2025-05-19","status":"owned","id":"i013"},{"added":"2026-09-30","brand":"Galayou","buySimilar":true,"buyUrl":"https://www.amazon.com/Indoor-Security-Galayou-Storage-Assistant/dp/B0B1T8T1WD","category":"Tech","gift":true,"kind":"item","name":"Pet Cam","no":14,"price":14.03,"status":"owned","id":"i014"},{"added":"2026-09-30","category":"Art & Keepsakes","kind":"item","name":"Erik's Keepsake Box","no":15,"sentimental":true,"status":"owned","id":"i015"},{"added":"2026-09-30","category":"Art & Keepsakes","kind":"item","name":"Skyrim Dragon Priest Clay Mask","no":16,"status":"owned","id":"i016"},{"added":"2026-09-30","brand":"Sonicare","buyUrl":"https://target.com/p/philips-sonicare-1100-rechargeable-electric-toothbrush-hx3641-02-white/-/A-83388554","category":"Personal Care","kind":"item","name":"Electric Toothbrush C1 Model","no":17,"status":"owned","usage":"Everyday","id":"i017"},{"added":"2026-09-30","brand":"Mosiso","buyUrl":"https://www.amazon.com/gp/product/B08G8HR8JV","category":"Bags & Carry","kind":"item","name":"Backpack (Tech)","no":18,"purchased":"2022-03-28","status":"owned","usage":"Every Month","id":"i018"},{"added":"2026-09-30","brand":"Apple","buySimilar":true,"buyUrl":"https://swappa.com/listings/macbook-pro-2021-16","category":"Tech","history":[{"d":"2026-09-30","src":"Swappa avg sale","v":805},{"d":"2026-10-01","src":"Swappa avg sale","v":812},{"d":"2026-10-02","src":"Swappa avg sale","v":813},{"d":"2026-10-03","src":"Swappa avg sale","v":813},{"d":"2026-10-04","src":"Swappa avg sale","v":814},{"d":"2026-10-06","src":"Swappa avg sale","v":821},{"d":"2026-10-07","src":"Swappa avg sale","v":817}],"kind":"item","name":"Macbook Pro 2021 16\"","no":19,"notes":"Paid $1,700 after trading in the old Mac","price":2499,"purchased":"2022-03-25","status":"owned","trackValue":true,"usage":"Everyday","value":817,"valueRange":"$773\u2013$958","valueSource":"Swappa avg sale, M1 Pro 512GB ($817; avg list $958)","valueUpdated":"2026-10-07","valueUrl":"https://swappa.com/listings/macbook-pro-2021-16","id":"i019"},{"added":"2026-09-30","category":"Art & Keepsakes","kind":"item","name":"Patch T-Shirt","no":20,"sentimental":true,"status":"owned","usage":"Every Year","id":"i020"},{"added":"2026-09-30","brand":"Vapur","buyUrl":"https://vapur.us/products/1l-wide-mouth-anti-bottle","category":"Outdoor & Travel","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"kind":"item","name":"Vapur Folding Pouch Water Bottle","no":21,"notes":"1L BPA Free - Made In China","price":11.42,"purchased":"2023-06-16","status":"gone","id":"i021"},{"added":"2026-09-30","brand":"Klean Kanteen","buyUrl":"https://www.evo.com/products/191699-klean-kanteen-16oz-tkwide-insulated-bottle-with-twist-cap","category":"Outdoor & Travel","kind":"item","name":"Klean Kanteen 16 Oz Insulated Bottle","no":22,"notes":"Insulated TKWide 16 oz with Twist Cap - Blue Tint","price":32.95,"purchased":"2022-11-28","status":"owned","id":"i022"},{"added":"2026-09-30","brand":"Yoga Tune Up","buyUrl":"https://www.tuneupfitness.com/shop/massage-balls/yoga-tune-up-therapy-ball","category":"Health & Recovery","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"consumable":true,"kind":"item","name":"Yoga Tune Up Balls","no":23,"price":18.99,"purchased":"2025-05-02","status":"gone","id":"i023"},{"added":"2026-09-30","brand":"Elefor","buyUrl":"https://www.amazon.com/Elefor-Massager%EF%BC%8CMuscle-Percussion-Athletes-Massagers/dp/B08PCR881M","category":"Health & Recovery","history":[{"d":"2026-10-01","src":"eBay used + new anchor","v":15},{"d":"2026-10-03","src":"eBay used","v":15}],"kind":"item","name":"Percussion Massage Gun","no":24,"notes":"DC IN: 5V 2A 2000mAh 25.2wh","price":33.13,"status":"owned","trackValue":true,"usage":"Everyday","value":15,"valueRange":"$10\u2013$20","valueSource":"eBay used Elefor listing ($16.40 + ship)","valueUpdated":"2026-10-03","id":"i024"},{"added":"2026-09-30","brand":"Spyder","category":"Clothing","kind":"item","name":"Grey Soft T-Shirt","no":25,"notes":"90% Polyester 10% Spandex - Size S - RN #63619","price":5.99,"purchased":"2023-06-14","status":"owned","id":"i025"},{"added":"2026-09-30","brand":"Columbia OmniShade Sun Hat","buyUrl":"https://www.columbia.com/p/bora-bora-ii-booney-1447091.html","category":"Clothing","kind":"item","name":"Sun Hat","no":26,"notes":"SPF 50+ - 100% textured nylon poplin","price":16.99,"purchased":"2023-06-14","status":"owned","id":"i026"},{"added":"2026-09-30","brand":"2nd Childhood","buyUrl":"https://www.amazon.com/gp/product/B089269NW7","category":"Outdoor & Travel","kind":"item","name":"2oz Clipable Bottle","no":27,"price":9.91,"purchased":"2023-06-13","status":"owned","id":"i027"},{"added":"2026-09-30","brand":"Master Medi","buySimilar":true,"buyUrl":"https://www.amazon.com/stores/MasterMedi/page/893732AA-FD17-41CA-8547-90E12D2A1C41","category":"Personal Care","consumable":true,"kind":"item","name":"Tongue Scraper","no":28,"notes":"Stainless Steel - BPA Free - Made in India","price":4.99,"status":"owned","id":"i028"},{"added":"2026-09-30","brand":"Anker","buySimilar":true,"buyUrl":"https://www.anker.com/collections/power-banks","category":"Tech","kind":"item","name":"Slim Portable Charger EDC","no":29,"notes":"10K mAh","price":21.99,"purchased":"2023-06-13","status":"owned","id":"i029"},{"added":"2026-09-30","brand":"ApiCal Life Store","buyUrl":"https://www.amazon.com/Apical-Life-Replacement-Toothbrush-HealthyWhite/dp/B0B16YF6PB","category":"Personal Care","consumable":true,"kind":"item","name":"Replacement Toothbrush Head","no":30,"price":1.3,"status":"owned","id":"i030"},{"added":"2026-09-30","brand":"Aputure","buyUrl":"https://amarancreators.com/products/mc","category":"Camera & Video","history":[{"d":"2026-09-30","src":"eBay listings","v":55},{"d":"2026-10-03","src":"eBay pre-owned","v":55},{"d":"2026-10-06","src":"eBay pre-owned asking","v":55},{"d":"2026-10-07","src":"eBay pre-owned asking","v":58}],"kind":"item","name":"Multi Color Small Camera Light","no":31,"notes":"Amaran MC - 3200 K to 6500 K","price":90,"status":"owned","trackValue":true,"value":58,"valueRange":"$55\u2013$70","valueSource":"eBay pre-owned Aputure MC, 6 listings $55\u2013$70 + ship asking","valueUpdated":"2026-10-07","id":"i031"},{"added":"2026-09-30","brand":"Aspen Kay","buyUrl":"https://aspenkaynaturals.com/products/shampoo-bar","category":"Personal Care","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"consumable":true,"kind":"item","name":"Shampoo Bar","no":32,"price":15,"status":"gone","id":"i032"},{"added":"2026-09-30","brand":"Aspen Kay","buySimilar":true,"buyUrl":"https://aspenkaynaturals.com/collections/hair-care","category":"Personal Care","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"consumable":true,"kind":"item","name":"Conditioner Bar","no":33,"price":15,"status":"gone","id":"i033"},{"added":"2026-09-30","brand":"B & M Premium","buyUrl":"https://us.amazon.com/BM-Premium-NP-FW50-Battery-DSC-RX10/dp/B0999QWRGM","category":"Camera & Video","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"kind":"item","name":"Battery Charger For Sony Camera","no":34,"price":30,"purchased":"2021-06-24","status":"gone","id":"i034"},{"added":"2026-09-30","brand":"Cliganic","buyUrl":"https://www.cliganic.com/products/organic-almond-oil","category":"Personal Care","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"consumable":true,"kind":"item","name":"Organic Almond Oil","no":35,"notes":"8 Oz","price":12.99,"status":"gone","id":"i035"},{"added":"2026-09-30","brand":"Coppertone","buyUrl":"https://www.amazon.com/Coppertone-SPORT-Sunscreen-Spectrum-1-5-Ounce/dp/B074W8L14W","category":"Personal Care","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"consumable":true,"kind":"item","name":"Sun Screen Stick","no":36,"notes":"1.5 Oz - SPF 40 - Water Resistant","price":8.99,"purchased":"2023-06-13","status":"gone","id":"i036"},{"added":"2026-09-30","brand":"DurCord","buyUrl":"https://www.amazon.com/iPhone-Charger-Certified-Charging-Compatible/dp/B08CDG2SSP","category":"Tech","kind":"item","name":"IPhone Lightning Cord Charger","no":37,"notes":"10 FT","price":5,"purchased":"2022-12-31","status":"owned","id":"i037"},{"added":"2026-09-30","brand":"EOS (Extreme Online Store)","buyUrl":"https://www.walmart.com/ip/684128169","category":"Vehicle","kind":"item","name":"Car Window Rain Guards","no":38,"price":37.99,"purchased":"2023-05-18","status":"owned","id":"i038"},{"added":"2026-09-30","brand":"FeelWorld","buySimilar":true,"buyUrl":"https://feelworld.ltd/products/feelworld-fw568-5-5-inch-small-camera-dslr-monitor-full-hd-1920x1080-video-assist-4k-hdmi-dc-out-tilt-arm","category":"Camera & Video","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"kind":"item","name":"4K Monitor For Camera","no":39,"price":149,"purchased":"2021-10-17","status":"gone","trackValue":true,"id":"i039"},{"added":"2026-09-30","brand":"Geekoto","buySimilar":true,"buyUrl":"https://www.amazon.com/Geekoto-Tripod-Camera-Compact-Aluminum/dp/B07DC48V5H","category":"Camera & Video","history":[{"d":"2026-10-01","src":"eBay pre-owned","v":40},{"d":"2026-10-03","src":"eBay pre-owned","v":40},{"d":"2026-10-06","src":"eBay pre-owned asking","v":40},{"d":"2026-10-07","src":"eBay pre-owned asking","v":40}],"kind":"item","name":"Tripod For Camera","no":40,"price":79.98,"purchased":"2021-10-17","status":"owned","trackValue":true,"value":40,"valueRange":"$30\u2013$55","valueSource":"eBay pre-owned Geekoto aluminum tripods, 6 listings $27\u2013$50 + ship","valueUpdated":"2026-10-07","id":"i040"},{"added":"2026-09-30","brand":"GoSun","buyUrl":"https://gosun.co/products/flatware","category":"Outdoor & Travel","kind":"item","name":"Spoon & Fork","no":41,"price":24.99,"purchased":"2023-06-13","status":"owned","id":"i041"},{"added":"2026-09-30","brand":"Ledger Nano X","buyUrl":"https://shop.ledger.com/products/ledger-nano-x","category":"Tech","history":[{"d":"2026-09-30","src":"eBay pre-owned","v":40},{"d":"2026-10-01","src":"eBay + PayMore used","v":35},{"d":"2026-10-02","src":"PayMore used","v":35},{"d":"2026-10-03","src":"eBay + PayMore used","v":35},{"d":"2026-10-04","src":"PayMore used","v":30},{"d":"2026-10-06","src":"PayMore used","v":30},{"d":"2026-10-07","src":"PayMore used","v":30}],"kind":"item","name":"Crypto Hard Wallet","no":42,"price":118,"purchased":"2021-01-03","status":"owned","trackValue":true,"value":30,"valueRange":"$28\u2013$45","valueSource":"PayMore used Nano X: Good CA$39.99 (\u2248US$29), like-new CA$56.99 (\u2248US$41)","valueUpdated":"2026-10-07","id":"i042"},{"added":"2026-09-30","brand":"Mace","buyUrl":"https://www.mace.com/products/pepper-gun-2-0-led","category":"Safety","kind":"item","name":"Pepper Spray Gun","no":43,"price":35.99,"purchased":"2021-09-25","status":"owned","id":"i043"},{"added":"2026-09-30","brand":"OhO Sunshine","buySimilar":true,"buyUrl":"https://www.ebay.com/str/ohosunshineofficialstore","category":"Tech","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"kind":"item","name":"Video Glasses","no":44,"price":166.99,"purchased":"2021-06-24","status":"gone","trackValue":true,"id":"i044"},{"added":"2026-09-30","brand":"Rocket Pure","buyUrl":"https://rocketpure.com/products/natural-lemon-foot-deodorant-spray-shoe-deodorizing-for-athletes","category":"Personal Care","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"consumable":true,"kind":"item","name":"Foot & Shoe Deoderizer Spray (Lemon)","no":45,"price":11.96,"purchased":"2022-11-28","status":"gone","id":"i045"},{"added":"2026-09-30","brand":"Rocket Pure","buySimilar":true,"buyUrl":"https://rocketpure.com/collections/natural-foot-amp-shoe-deodorizing-sprays","category":"Personal Care","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"consumable":true,"kind":"item","name":"Foot & Shoe Deoderizer Spray (Teatree)","no":46,"price":11.96,"purchased":"2022-11-28","status":"gone","id":"i046"},{"added":"2026-09-30","brand":"SanDisk","buyUrl":"https://www.sandisk.com/products/memory-cards/sd-cards/sandisk-extreme-pro-uhs-i-sd?sku=SDSDXXD-128G-GN4IN","category":"Camera & Video","kind":"item","name":"SD Card (128 GB 170 MB/s Extreme Pro)","no":47,"price":33.25,"purchased":"2021-07-29","status":"owned","id":"i047"},{"added":"2026-09-30","brand":"SmartLifeCo","buyUrl":"https://www.vitacost.com/products/smartlifeco-floss-picks-unflavored-100-pack-156423","category":"Personal Care","consumable":true,"kind":"item","name":"Floss Picks","no":48,"price":11.99,"purchased":"2022-11-28","status":"owned","id":"i048"},{"added":"2026-09-30","brand":"Sno Seal","buyUrl":"https://www.acehardware.com/p/86540","category":"Home","consumable":true,"kind":"item","name":"Leather Weather Proof Wax","no":49,"price":8.99,"purchased":"2023-05-23","status":"owned","id":"i049"},{"added":"2026-09-30","brand":"Speedo","buySimilar":true,"buyUrl":"https://speedo.com/en-us/collections/goggles-vanquisher","category":"Outdoor & Travel","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"kind":"item","name":"Swim Goggles","no":50,"price":22.05,"purchased":"2023-06-10","status":"gone","id":"i050"},{"added":"2026-09-30","brand":"Taser","buySimilar":true,"buyUrl":"https://taser.com/products/pulse-2","category":"Safety","kind":"item","name":"Stun Gun","no":51,"price":130,"purchased":"2021-09-25","status":"owned","trackValue":true,"id":"i051"},{"added":"2026-09-30","brand":"Twone","buySimilar":true,"buyUrl":"https://www.amazon.com/stores/page/17DE8182-303B-4523-8E61-E52CADC55B66/","category":"Stationery","kind":"item","name":"Blank Journal","no":52,"price":2.5,"purchased":"2021-10-17","status":"owned","id":"i052"},{"added":"2026-09-30","brand":"Unidapt","buySimilar":true,"buyUrl":"https://www.amazon.com/stores/Unidapt/page/E3B61672-B2BD-4F1D-9B87-AD47AC7D2126","category":"Tech","kind":"item","name":"Outlet Plug Adapter For Travel","no":53,"price":22.99,"purchased":"2023-06-13","status":"owned","id":"i053"},{"added":"2026-09-30","brand":"VectorTech","buyUrl":"https://www.amazon.com/Charger-Adapter-Vector-Compatible-Samsung/dp/B079R9N7WS","category":"Tech","kind":"item","name":"Outlet Charging Brick","no":54,"price":2.5,"purchased":"2022-09-23","status":"owned","id":"i054"},{"added":"2026-09-30","brand":"Vibram","buySimilar":true,"buyUrl":"https://www.vibram.com/us/shop/fivefingers","category":"Footwear","history":[{"d":"2026-10-01","src":"Poshmark/eBay used","v":40},{"d":"2026-10-03","src":"Poshmark used","v":45},{"d":"2026-10-04","src":"Poshmark used","v":55},{"d":"2026-10-06","src":"Poshmark used","v":55},{"d":"2026-10-07","src":"eBay pre-owned asking","v":50}],"kind":"item","name":"Shoes","no":55,"price":114.95,"purchased":"2022-10-27","status":"owned","trackValue":true,"value":50,"valueRange":"$35\u2013$65","valueSource":"eBay pre-owned men's FiveFingers, 51 listings $12\u2013$100 (median ~$50)","valueUpdated":"2026-10-07","id":"i055"},{"added":"2026-09-30","brand":"Sky Dancers","buyUrl":"https://www.walmart.com/ip/655317539","category":"Art & Keepsakes","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"kind":"item","name":"Wacky Waving Inflatable Arm Tube Man","no":56,"price":164.63,"purchased":"2020-09-10","status":"gone","trackValue":true,"id":"i056"},{"added":"2026-09-30","brand":"WetBrush","buyUrl":"https://www.target.com/p/wet-brush-original-detangler-hair-brush-for-less-pain-effort-and-breakage/-/A-87842798","category":"Personal Care","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"kind":"item","name":"Hair Brush","no":57,"price":12.73,"purchased":"2023-06-09","status":"gone","id":"i057"},{"added":"2026-09-30","brand":"ZeroWater","buySimilar":true,"buyUrl":"https://zerowater.com/collections/water-filter-pitchers-dispensers","category":"Home","kind":"item","name":"Water Pitcher With Filter Design","no":58,"price":24.99,"purchased":"2022-05-11","status":"owned","id":"i058"},{"added":"2026-09-30","brand":"ZeroWater","buyUrl":"https://zerowater.com/collections/5-stage-replacement-water-filters","category":"Home","consumable":true,"kind":"item","name":"Water Filter For Water Pitcher","no":59,"price":15,"purchased":"2022-05-11","status":"owned","id":"i059"},{"added":"2026-09-30","brand":"Lavodia","buyUrl":"https://www.amazon.com/clp/B07N93WLNM","category":"Home","consumable":true,"kind":"item","name":"Cedar Wood Closet Fresheners","no":60,"price":12,"purchased":"2023-06-13","status":"owned","id":"i060"},{"added":"2026-09-30","brand":"Invisibobble","buySimilar":true,"buyUrl":"https://invisibobble.com/collections/hairties","category":"Personal Care","consumable":true,"kind":"item","name":"Hair Ties","no":61,"price":11,"purchased":"2023-06-12","status":"owned","id":"i061"},{"added":"2026-09-30","brand":"Ticonn","buyUrl":"https://www.amazon.com/TICONN-RFID-Blocking-Cards-Contactless/dp/B07T8PYBKM","category":"Bags & Carry","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"kind":"item","name":"RFID Blocking Card For Wallet","no":62,"price":2,"purchased":"2023-05-18","status":"gone","id":"i062"},{"added":"2026-09-30","brand":"LakiBeibi","buyUrl":"https://www.amazon.com/LakiBeibi-Lightweight-Premium-Magnetic-Protective/dp/B07XK26CK1","category":"Tech","kind":"item","name":"iPhone 11 Case","no":63,"price":12.99,"purchased":"2023-04-10","status":"owned","id":"i063"},{"added":"2026-09-30","brand":"K & F Concept Store","buyUrl":"https://www.kentfaith.com/nd2-nd400-filter","category":"Camera & Video","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"kind":"item","name":"ND Camera Lens Filter","no":64,"price":54.39,"purchased":"2021-10-17","status":"gone","id":"i064"},{"added":"2026-09-30","brand":"Hicobar","buyUrl":"https://www.amazon.com/Hicober-USB-Card-Reader-Camera-Android/dp/B07T55DL33","category":"Tech","kind":"item","name":"SD Card Reader USB-C","no":65,"price":12.7,"purchased":"2020-09-22","status":"owned","id":"i065"},{"added":"2026-09-30","brand":"Merino.Tech","buySimilar":true,"buyUrl":"https://merino.tech/collections/mens-lightweight","category":"Clothing","kind":"item","name":"Merino Wool Long Sleeve in Tan","no":66,"price":55.11,"purchased":"2023-06-12","status":"owned","id":"i066"},{"added":"2026-09-30","brand":"Merino.Tech","buySimilar":true,"buyUrl":"https://merino.tech/collections/mens-lightweight","category":"Clothing","kind":"item","name":"Merino Wool Long Sleeve in Yellow","no":67,"price":55.11,"purchased":"2023-06-12","status":"owned","id":"i067"},{"added":"2026-09-30","buySimilar":true,"buyUrl":"https://www.anker.com/collections/usb-a-cable","category":"Tech","kind":"item","name":"Micro USB Cable","no":69,"qty":2,"status":"owned","id":"i069"},{"added":"2026-09-30","buySimilar":true,"buyUrl":"https://www.apple.com/shop/product/muq93am/a/usb-c-to-lightning-cable-1-m","category":"Tech","kind":"item","name":"Lightning to USB-C","no":70,"status":"owned","id":"i070"},{"added":"2026-09-30","brand":"Azmogdt","category":"Tech","kind":"item","name":"Lightning Cable USB 5 FT Cord","no":71,"status":"owned","id":"i071"},{"added":"2026-09-30","brand":"Sony","buyUrl":"https://www.bhphotovideo.com/c/product/712854-REG/Sony_NPFW50_NP_FW50_Lithium_Ion_Rechargeable_Battery.html","category":"Camera & Video","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"kind":"item","name":"Sony Camera NP-FW50 Battery","no":72,"status":"gone","id":"i072"},{"added":"2026-09-30","brand":"B & M Premium","buyUrl":"https://www.amazon.com/BM-Premium-NP-FW50-Batteries-DSC-RX10/dp/B008OZT8HE","category":"Camera & Video","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"kind":"item","name":"Sony Camera NP-FW50 Battery","no":73,"qty":2,"status":"gone","id":"i073"},{"added":"2026-09-30","brand":"Sharpie","buyUrl":"https://www.sharpie.com/markers/permanent-markers/sharpie-permanent-markers-fine-point/SP_1185579.html","category":"Stationery","consumable":true,"kind":"item","name":"Sharpie Fine Point (Orange)","no":74,"status":"owned","id":"i074"},{"added":"2026-09-30","brand":"Insignia","buyUrl":"https://www.bestbuy.com/product/insignia-usb-c-to-usb-adapter-black/J2FPJKSSJC","category":"Tech","kind":"item","name":"USB-C to USB Cable Adapter","no":75,"status":"owned","id":"i075"},{"added":"2026-09-30","brand":"Pelican","buyUrl":"https://www.pelican.com/us/en/product/cases/0915","category":"Camera & Video","kind":"item","name":"SD Card Carrying Case","no":76,"status":"owned","id":"i076"},{"added":"2026-09-30","brand":"SanDisk","buyUrl":"https://www.sandisk.com/products/memory-cards/sd-cards/sandisk-extreme-uhs-i-sd?sku=SDSDXVA-128G-GNCIN","category":"Camera & Video","kind":"item","name":"SD Card (128 GB 90 MB/s Extreme)","no":77,"status":"owned","id":"i077"},{"added":"2026-09-30","brand":"SanDisk","buyUrl":"https://www.sandisk.com/products/memory-cards/microsd-cards/sandisk-extreme-uhs-i-microsd?sku=SDSQXAA-128G-GN6MA","category":"Camera & Video","kind":"item","name":"Micro SD Card (128 GB Extreme Plus)","no":78,"status":"owned","id":"i078"},{"added":"2026-09-30","brand":"San Disk","buyUrl":"https://www.sandisk.com/products/memory-cards/microsd-cards/sandisk-extreme-uhs-i-microsd","category":"Camera & Video","kind":"item","name":"Micro SD Card (64 GB Extreme)","no":79,"status":"owned","id":"i079"},{"added":"2026-09-30","brand":"Portage","buyUrl":"https://portagenotebooks.com/3-pack-tactical-top-bound-notebook-kp24l-2-75-x-4-6/","category":"Stationery","kind":"item","name":"Little Notepad","no":80,"status":"owned","id":"i080"},{"added":"2026-09-30","buySimilar":true,"buyUrl":"https://www.amazon.com/MagicFiber-Microfiber-Cleaning-Cloths-PACK/dp/B0050R67U0","category":"Tech","kind":"item","name":"Micro Fiber Screen Cloth","no":81,"status":"owned","id":"i081"},{"added":"2026-09-30","brand":"Philips Norelco","buySimilar":true,"buyUrl":"https://www.usa.philips.com/c-m-pe/face-shavers","category":"Personal Care","kind":"item","name":"Electric Razor (Phillips Norelco)","no":82,"status":"owned","id":"i082"},{"added":"2026-09-30","buySimilar":true,"buyUrl":"https://www.usa.philips.com/c-m-pe/accessories-and-replacements","category":"Personal Care","consumable":true,"kind":"item","name":"#3 Plastic Guard For Electric Razor","no":83,"status":"owned","id":"i083"},{"added":"2026-09-30","buySimilar":true,"buyUrl":"https://www.amazon.com/Seki-Stainless-Fingernail-Clipper-SS-106/dp/B000F35R00","category":"Personal Care","kind":"item","name":"Nail Clippers","no":84,"status":"owned","id":"i084"},{"added":"2026-09-30","category":"Art & Keepsakes","kind":"item","name":"Pink stone necklace pendant","no":85,"sentimental":true,"status":"owned","id":"i085"},{"added":"2026-09-30","category":"Art & Keepsakes","kind":"item","name":"Sterling silver necklace chain","no":86,"sentimental":true,"status":"owned","id":"i086"},{"added":"2026-09-30","buySimilar":true,"buyUrl":"https://www.anker.com/products/a8436","category":"Tech","kind":"item","name":"Cable- USB-C/Lightning cable/Micro USB","no":87,"status":"owned","id":"i087"},{"added":"2026-09-30","brand":"Outdoor Research","buySimilar":true,"buyUrl":"https://www.outdoorresearch.com/products/mens-helium-rain-jacket-322402","category":"Clothing","kind":"item","name":"Rain Jacket","no":88,"price":55,"status":"owned","id":"i088"},{"added":"2026-09-30","brand":"Bella+Canvas","category":"Clothing","kind":"item","name":"T-Shirt (Purple Tie Dye - I am Infinite)","no":89,"notes":"Tie Dye - Custom Graphic - I am Infinite - 100% Cotton","status":"owned","id":"i089"},{"added":"2026-09-30","brand":"Smart Wool","buySimilar":true,"buyUrl":"https://www.smartwool.com/en-us/collections/mens-tops","category":"Clothing","kind":"item","name":"T-Shirt (Black & Grey Tie Dye)","no":90,"notes":"Knit in China: 88% Merino Wool, 12% Nylon - Plant based Dye - Nylon Core design","price":49.62,"purchased":"2023-06-13","status":"owned","id":"i090"},{"added":"2026-09-30","brand":"Northface","buySimilar":true,"buyUrl":"https://www.thenorthface.com/en-us/p/mens/mens-bottoms/mens-shorts-c224220/mens-class-v-belted-shorts-NF0A55V8","category":"Clothing","kind":"item","name":"Shorts (Athletic)","no":91,"notes":"96% Nylon - 4% Elastane - Pockets = 100% Polyester - I love the built in clip style belt - Size 30 - made in Indonesia","status":"owned","id":"i091"},{"added":"2026-09-30","brand":"Eastern Mountain Sports","buySimilar":true,"buyUrl":"https://www.ems.com/collections/zip-off-pants","category":"Clothing","kind":"item","name":"Zip-Off Pants","no":92,"notes":"Nylon I assume - Size 4 women's regular - I love the carabiner loop these have","status":"owned","id":"i092"},{"added":"2026-09-30","brand":"AllBirds","buyUrl":"https://www.allbirds.com/products/mens-trino-trunk","category":"Clothing","kind":"item","name":"Underwear (Dark Blue - Trunk)","no":93,"notes":"Size S - made in Vietnam - 65% Tencel and Lyocell, 28% Merino Wool, 7% Elastane","price":15.4,"status":"owned","id":"i093"},{"added":"2026-09-30","category":"Art & Keepsakes","kind":"item","name":"Tie-Dye Long Sleeve","no":94,"notes":"From Carrie in CO","sentimental":true,"status":"owned","id":"i094"},{"added":"2026-09-30","brand":"AllBirds","buyUrl":"https://www.allbirds.com/products/mens-soft-merino-long-sleeve-tee","category":"Clothing","kind":"item","name":"Long Sleeve Shirt (White)","no":95,"notes":"Size S - 45% ZQ Merino Wool, 36% Recycled Polyester, 19% Tencel\u2122 Lyocell","price":34,"purchased":"2023-06-13","status":"owned","id":"i095"},{"added":"2026-09-30","brand":"Outdoor Research","buySimilar":true,"buyUrl":"https://www.outdoorresearch.com/products/mens-ferrosi-pants-287642","category":"Clothing","kind":"item","name":"Pants (Loden / Natural Green)","no":96,"notes":"bluesign\u00ae approved 86% Nylon (46% Recycled), 14% Spandex 90D Stretch Woven Ripstop - 30 Inch inseam - SPF 50 - weight 10.7 OZ - made in Bangladesh","price":51,"purchased":"2023-06-18","status":"owned","id":"i096"},{"added":"2026-09-30","brand":"AllBirds","buyUrl":"https://www.allbirds.com/products/mens-trino-trunk-navy-night","category":"Clothing","kind":"item","name":"Underwear (Navy Blue - Trunk)","no":102,"notes":"Size M - made in Vietnam - 65% Tencel and Lyocell, 28% Merino Wool, 7% Elastane","price":15.4,"status":"owned","id":"i102"},{"added":"2026-09-30","brand":"AllBirds","buyUrl":"https://www.allbirds.com/products/mens-trino-boxer-brief","category":"Clothing","kind":"item","name":"Underwear (Tan - Boxer Brief)","no":103,"notes":"Size M - made in Vietnam - 65% Tencel and Lyocell, 28% Merino Wool, 7% Elastane","price":16.8,"status":"owned","id":"i103"},{"added":"2026-09-30","brand":"AllBirds","buyUrl":"https://www.allbirds.com/products/mens-trino-boxer-brief","category":"Clothing","kind":"item","name":"Underwear (Navy Blue - Boxer Brief)","no":104,"notes":"Size M - made in Vietnam - 65% Tencel and Lyocell, 28% Merino Wool, 7% Elastane","price":16.8,"status":"owned","id":"i104"},{"added":"2026-09-30","brand":"AllBirds","buyUrl":"https://www.allbirds.com/products/mens-trino-boxer-brief-hazy-pine","category":"Clothing","kind":"item","name":"Underwear (Hazy Green - Boxer Brief)","no":105,"notes":"Size M - made in Vietnam - 65% Tencel and Lyocell, 28% Merino Wool, 7% Elastane","price":16.8,"status":"owned","id":"i105"},{"added":"2026-09-30","brand":"PackTowel","buySimilar":true,"buyUrl":"https://www.packtowl.com/shop/towels/personal-towel/personal.html","category":"Outdoor & Travel","kind":"item","name":"Towel (Green - Big)","no":106,"notes":"85% Polyester - 15% Nylon","status":"owned","id":"i106"},{"added":"2026-09-30","brand":"Outdoor Research","buySimilar":true,"buyUrl":"https://www.outdoorresearch.com/products/mens-ferrosi-pants-287642","category":"Clothing","kind":"item","name":"Pants (Gray)","no":107,"notes":"90D stretch woven ripstop (40% nylon, 46% recycled nylon, 14% spandex), DWR-treated - 30 Reg Size - made in Bangledesh","price":55,"status":"owned","id":"i107"},{"added":"2026-09-30","brand":"Smart Wool","buySimilar":true,"buyUrl":"https://www.smartwool.com/en-us/collections/mens-tops","category":"Clothing","kind":"item","name":"Long Sleeve (Red)","no":108,"notes":"Size S - 53% merino wool, 47% Tencel lyocell","price":43,"status":"owned","id":"i108"},{"added":"2026-09-30","brand":"AllBirds","buyUrl":"https://www.allbirds.com/products/mens-long-sleeve-sea-tee","category":"Clothing","kind":"item","name":"Long Sleeve (Navy Blue)","no":109,"notes":"Made in Peru.The Sea Long Sleeve Tee is made of 65% TENCEL\u2122 Lyocell, 30% merino wool, and 5% Chitosan. Its trim is made of 63% TENCEL\u2122 Lyocell, 29% merino wool, 5% Chitosan, 3% Spandex.","price":44,"status":"owned","id":"i109"},{"added":"2026-09-30","brand":"Polo Ralph Lauren","buySimilar":true,"buyUrl":"https://www.ralphlauren.com/men-clothing-shorts/6-inch-stretch-classic-fit-chino-short/468739.html","category":"Clothing","kind":"item","name":"Shorts (Dress/Casual - Tan)","no":110,"notes":"100% Cotton - Supplier # 0200011793 -PO# 0200000086 - 30 waist - 6inch inseam","status":"owned","id":"i110"},{"added":"2026-09-30","brand":"Polo Ralph Lauren","buySimilar":true,"buyUrl":"https://www.ralphlauren.com/men-clothing-button-down-shirts/classic-fit-tie-dye-oxford-shirt/613660.html","category":"Clothing","kind":"item","name":"Button Down (Tie Dye - Oxford Polo)","no":111,"notes":"100% Cotton -Made in China - (Numbers found on tag) 15.5 & 32/33","status":"owned","id":"i111"},{"added":"2026-09-30","brand":"Adidas","buySimilar":true,"buyUrl":"https://www.adidas.com/us/men-athletic-shorts","category":"Clothing","kind":"item","name":"Shorts (Athletic)","no":112,"notes":"Size M -Made in Indonesia - RN # 88387 - 100% Polyester","status":"owned","id":"i112"},{"added":"2026-09-30","brand":"AllBirds","buyUrl":"https://www.allbirds.com/products/mens-soft-merino-tee","category":"Clothing","kind":"item","name":"T-Shirt (Dark Yellow)","no":113,"notes":"Made in Indonesia - Size S - 45% Merino Wool, 36% Recycled Polyester, 19% Tencel\u2122 Lyocell","price":29,"status":"owned","id":"i113"},{"added":"2026-09-30","brand":"AllBirds","buyUrl":"https://www.allbirds.com/products/mens-soft-merino-tee","category":"Clothing","kind":"item","name":"T-Shirt (Hazy Green)","no":114,"notes":"Made in Indonesia - Size S- 45% Merino Wool, 36% Recycled Polyester, 19% Tencel\u2122 Lyocell","price":29,"status":"owned","id":"i114"},{"added":"2026-09-30","brand":"Outdoor Research","buySimilar":true,"buyUrl":"https://www.outdoorresearch.com/products/mens-ferrosi-pants-287642","category":"Clothing","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"kind":"item","name":"Pants (Navy Blue)","no":115,"notes":"bluesign\u00ae approved 86% Nylon (46% Recycled), 14% Spandex 90D Stretch Woven Ripstop. Knees - 91% Cordura\u00ae Nylon, 9% Spandex","price":55,"status":"gone","id":"i115"},{"added":"2026-09-30","brand":"Outdoor Research","buySimilar":true,"buyUrl":"https://www.outdoorresearch.com/products/mens-echo-hoodie-287625","category":"Clothing","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"kind":"item","name":"Long Sleeve (Yellow - Hoodie)","no":116,"notes":"bluesign\u00ae approved 100% Recycled Polyester - UPF 20 - Size S","price":25,"status":"gone","id":"i116"},{"added":"2026-09-30","brand":"Outdoor Research","buySimilar":true,"buyUrl":"https://www.outdoorresearch.com/products/mens-ferrosi-convertible-pants-287640","category":"Clothing","kind":"item","name":"Zip-Off Pants (Dark Green)","no":117,"notes":"bluesign\u00ae approved 86% Nylon (46% Recycled), 14% Spandex 90D Stretch Woven Ripstop","price":24,"status":"owned","id":"i117"},{"added":"2026-09-30","brand":"Outdoor Research","buyUrl":"https://www.outdoorresearch.com/us/double-hull-pack-35l-287694","category":"Bags & Carry","history":[{"d":"2026-10-01","src":"Geartrade + Poshmark sold","v":40},{"d":"2026-10-03","src":"Geartrade + Poshmark sold","v":40}],"kind":"item","name":"Backpack (35 L)","no":118,"notes":"Made in Cambodia - Shell: 100% Polyester 600D With TPU Lamination, Lining: 55% Polyester, 45% Recycled, Polyester woven, Dry Bag: 100% Nylon, 40D Siliconized Diamond Ripstop With PU Coating","price":55,"status":"owned","trackValue":true,"value":40,"valueRange":"$30\u2013$55","valueSource":"Geartrade sold $45 (Good) + Poshmark sold $65 NWT","valueUpdated":"2026-10-03","id":"i118"},{"added":"2026-09-30","brand":"Outdoor Research","buySimilar":true,"buyUrl":"https://www.outdoorresearch.com/collections/mens-short-sleeve-shirts","category":"Clothing","kind":"item","name":"Collared Polo T-Shirt (Tie Dye)","no":119,"status":"owned","id":"i119"},{"added":"2026-09-30","brand":"Outdoor Research","buyUrl":"https://www.injinji.com/everyday-lightweight-hidden-upcycled-cotton.html","category":"Clothing","kind":"item","name":"Socks (No Show - Yellow)","no":120,"notes":"45% Recover\u00ae Cotton, 41% Recycled Polyester, 12% Nylon, 2% Lycra\u00ae - Size M","price":13,"status":"owned","id":"i120"},{"added":"2026-09-30","brand":"Outdoor Research","buySimilar":true,"buyUrl":"https://www.outdoorresearch.com/collections/socks","category":"Clothing","kind":"item","name":"Socks (Ankle - Green)","no":121,"notes":"33% CoolMax EcoMade\u00ae 64% Nylon, 3% Lycra\u00ae - Size M","price":18,"status":"owned","id":"i121"},{"added":"2026-09-30","brand":"Outdoor Research","buySimilar":true,"buyUrl":"https://www.outdoorresearch.com/collections/socks","category":"Clothing","kind":"item","name":"Socks (Ankle - Black)","no":122,"notes":"33% CoolMax EcoMade\u00ae 64% Nylon, 3% Lycra\u00ae - Size M","price":18,"status":"owned","id":"i122"},{"added":"2026-09-30","brand":"Outdoor Research","buySimilar":true,"buyUrl":"https://www.outdoorresearch.com/collections/socks","category":"Clothing","kind":"item","name":"Socks (Low Show - Black)","no":123,"notes":"36% CoolMax EcoMade\u00ae 62% Nylon 2% Lycra\u00ae","price":14,"status":"owned","id":"i123"},{"added":"2026-09-30","brand":"Injinji","buyUrl":"https://www.injinji.com/run-lightweight-no-show-merino-wool.html","category":"Clothing","kind":"item","name":"Socks (Low Show - Black - Merino Wool)","no":124,"notes":"66% Merino Wool 30% Nylon 4% Lycra\u00ae - Size M","price":19.2,"status":"owned","id":"i124"},{"added":"2026-09-30","brand":"Bic","buySimilar":true,"buyUrl":"https://nam.bic.com/en-us/stationery/bic-mechanical-pencils","category":"Stationery","consumable":true,"kind":"item","name":"Pencil","no":125,"notes":"0.7 mm - HB #2","status":"owned","id":"i125"},{"added":"2026-09-30","brand":"G - 301 GP","category":"Stationery","consumable":true,"kind":"item","name":"Pen","no":126,"notes":"0.7 mm","status":"owned","id":"i126"},{"added":"2026-09-30","brand":"Uni-Ball Vision Elite","buyUrl":"https://uniballco.com/vision-elite/","category":"Stationery","consumable":true,"kind":"item","name":"Pen (Purple)","no":127,"status":"owned","id":"i127"},{"added":"2026-09-30","brand":"Olbas","buyUrl":"https://www.wholefoodsmarket.com/product/olbas-power-to-breathe-inhaler-001-oz-b00016wrzo","category":"Personal Care","consumable":true,"kind":"item","name":"Nasal Inhaler (Menthol - Peppermint)","no":128,"status":"owned","id":"i128"},{"added":"2026-09-30","brand":"Burt's Bees","buyUrl":"https://www.burtsbees.com/product/beeswax-lip-balm/","category":"Personal Care","consumable":true,"kind":"item","name":"Chap Stick","no":129,"status":"owned","id":"i129"},{"added":"2026-09-30","brand":"Philips Sonicare","buySimilar":true,"buyUrl":"https://www.usa.philips.com/c-w/support-home/parts-and-accessories.html","category":"Personal Care","kind":"item","name":"Phillips Sonicare Toothbrush Charger","no":130,"status":"owned","id":"i130"},{"added":"2026-09-30","brand":"Dr. Bronner's","buyUrl":"https://www.drbronner.com/products/peppermint-all-one-toothpaste","category":"Personal Care","consumable":true,"kind":"item","name":"ToothPaste","no":131,"notes":"Organic Glycerin, Organic Aloe Barbadensis Leaf Juice, Hydrated Silica, Calcium Carbonate, Xanthan Gum, Sodium Bicarbonate (Baking Soda), Potassium Cocoate (made with Organic Coconut Oil), Organic Mentha Piperita (Peppermint) Oil, Organic Mentha Arvensis (Menthol) Crystals, Organic Cocos Nucifera (Coconut) Flour, Organic Cocos Nucifera (Coconut) Oil, Tocopherol, Citric Acid, Organic Stevia Rebaudiana Leaf / Stem ExtractSourced from Organic Soy.","status":"owned","id":"i131"},{"added":"2026-09-30","brand":"Amazon","category":"Subscriptions","cost":14.99,"due":"27th","kind":"subscription","manageUrl":"https://www.amazon.com/gp/css/homepage.html","name":"Amazon Prime","no":132,"period":"month","status":"owned","id":"i132"},{"added":"2026-09-30","brand":"Youtube","category":"Subscriptions","cost":14.99,"due":"29th","kind":"subscription","manageUrl":"https://www.youtube.com/paid_memberships","name":"YouTube Premium","no":133,"period":"month","status":"owned","id":"i133"},{"added":"2026-09-30","brand":"Trusted House Sitters","category":"Subscriptions","cost":259,"kind":"subscription","manageUrl":"https://www.trustedhousesitters.com/","name":"Trusted House Sitters Membership","no":134,"period":"year","status":"owned","id":"i134"},{"added":"2026-09-30","brand":"Adobe","category":"Subscriptions","cost":14.99,"due":"31st","kind":"subscription","manageUrl":"https://account.adobe.com/plans","name":"Adobe Photoshop","no":135,"period":"month","status":"owned","id":"i135"},{"added":"2026-09-30","brand":"Google","category":"Subscriptions","cost":1.99,"due":"27th","kind":"subscription","manageUrl":"https://one.google.com/storage","name":"Google Drive Storage","no":136,"period":"month","status":"owned","id":"i136"},{"added":"2026-09-30","brand":"Apple","category":"Subscriptions","cost":2.99,"due":"17th","kind":"subscription","manageUrl":"https://www.icloud.com/","name":"Apple iCloud Storage","no":137,"period":"month","status":"owned","id":"i137"},{"added":"2026-09-30","brand":"OpenAI","category":"Subscriptions","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"cost":19.99,"due":"11th","kind":"subscription","manageUrl":"https://chatgpt.com/","name":"ChatGPT Plus","no":138,"period":"month","status":"gone","id":"i138"},{"added":"2026-09-30","brand":"Vibram","buyUrl":"https://www.vibram.com/us/shop/fivefingers/men/v-aqua/M73_GreyCoralOrange.html","category":"Footwear","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"kind":"item","name":"Vibrams V-Aqua","no":139,"status":"gone","id":"i139"},{"added":"2026-09-30","brand":"Progressive","category":"Bills","cost":554,"kind":"bill","manageUrl":"https://www.progressive.com/","name":"Car Insurance","no":140,"period":"6 months","status":"owned","id":"i140"},{"added":"2026-09-30","brand":"Verizon","category":"Bills","cost":48,"kind":"bill","manageUrl":"https://www.verizon.com/","name":"Phone Bill","no":141,"period":"month","status":"owned","id":"i141"},{"added":"2026-09-30","brand":"LifeStraw","buyUrl":"https://lifestraw.com/products/lifestraw","category":"Outdoor & Travel","kind":"item","name":"Life Straw","no":142,"status":"owned","id":"i142"},{"added":"2026-09-30","brand":"Lighting EVER","buyUrl":"https://www.amazon.com/Lighting-EVER-Rechargeable-Waterproof-Flashlight/dp/B07WP393CS","category":"Outdoor & Travel","kind":"item","name":"Headlamp x2","no":143,"price":21.99,"purchased":"2023-11-09","status":"owned","id":"i143"},{"added":"2026-09-30","brand":"CIZALTP","category":"Outdoor & Travel","kind":"item","name":"Tree/Pole Climbing Spikes/Gafs","no":144,"price":69.99,"purchased":"2023-11-09","status":"owned","trackValue":true,"id":"i144"},{"added":"2026-09-30","brand":"ULANZI","buyUrl":"https://www.ulanzi.com/products/mt-08-two-in-one-tripod-selfie-stick","category":"Camera & Video","kind":"item","name":"Tripod (Small)","no":145,"price":19.95,"purchased":"2023-11-09","status":"owned","trackValue":true,"id":"i145"},{"added":"2026-09-30","brand":"SNAP Mounts","buyUrl":"https://www.adorama.com/us1536110.html","category":"Camera & Video","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"kind":"item","name":"Magnetic GoPro Mounts","no":146,"price":69.99,"purchased":"2023-11-09","status":"gone","trackValue":true,"id":"i146"},{"added":"2026-09-30","brand":"AERLANG","buyUrl":"https://www.amazon.com/AERLANG-Massager-Massagers-Circulation-Flexibility/dp/B0C65BCDYZ","category":"Health & Recovery","kind":"item","name":"Hand Massager (Cordless)","no":147,"price":24,"purchased":"2023-11-24","status":"owned","id":"i147"},{"added":"2026-09-30","brand":"Snailax","buySimilar":true,"buyUrl":"https://www.snailax.com/collections/neck-massager","category":"Health & Recovery","kind":"item","name":"Massager (Sling Shaped)","no":148,"purchased":"2023-11-24","status":"owned","id":"i148"},{"added":"2026-09-30","brand":"Perfecore","buySimilar":true,"buyUrl":"https://www.amazon.com/stores/Perfecore/LegMassagers/page/86E70E92-D322-45CE-85FF-2DFD8702E6C9","category":"Health & Recovery","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"kind":"item","name":"Leg Massager (Air Pressure Only)","no":149,"price":40,"purchased":"2023-11-24","status":"gone","id":"i149"},{"added":"2026-09-30","brand":"Nulksen","buyUrl":"https://www.amazon.com/Inflator-Portable-Compressor-Nulksen-Cordless/dp/B09R1NTVP1","category":"Outdoor & Travel","kind":"item","name":"Air Pump (Cordless)","no":150,"price":35.98,"purchased":"2023-11-24","status":"owned","trackValue":true,"id":"i150"},{"added":"2026-09-30","brand":"RENPHO","buySimilar":true,"buyUrl":"https://renpho.com/collections/eye-massager","category":"Health & Recovery","history":[{"d":"2026-09-30","src":"eBay pre-owned","v":22},{"d":"2026-10-01","src":"eBay pre-owned sold","v":15},{"d":"2026-10-02","src":"eBay listings","v":15},{"d":"2026-10-03","src":"eBay pre-owned","v":18},{"d":"2026-10-04","src":"PayMore used","v":15},{"d":"2026-10-06","src":"PayMore used","v":15},{"d":"2026-10-07","src":"PayMore used","v":15}],"kind":"item","name":"Eye Massager (Cordless)","no":151,"price":45.99,"purchased":"2023-11-24","status":"owned","trackValue":true,"value":15,"valueRange":"$11\u2013$25","valueSource":"PayMore used Eyeris 1 (Fair, heavy wear, $10.99); Good est. higher","valueUpdated":"2026-10-07","id":"i151"},{"added":"2026-09-30","brand":"Teqifu","buyUrl":"https://www.amazon.com/Teqifu-Crease-Ponytail-Suitable-Children/dp/B08MD91KRR","category":"Personal Care","consumable":true,"kind":"item","name":"Hair Ties (Plastic Swirl Bands)","no":152,"price":5.89,"purchased":"2023-11-24","status":"owned","id":"i152"},{"added":"2026-09-30","brand":"MOREOK","buyUrl":"https://www.amazon.com/MOREOK-Knitted-Thinsulate-Windproof-Cycling-S/dp/B08K3WXSB8","category":"Clothing","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"kind":"item","name":"Winter Gloves","no":153,"price":22.09,"purchased":"2023-11-24","status":"gone","id":"i153"},{"added":"2026-09-30","brand":"sport2people","buySimilar":true,"buyUrl":"https://www.amazon.com/stores/sport2people/page/DC892BA1-C100-489A-B14C-E99E24977B48","category":"Bags & Carry","kind":"item","name":"Running belt","no":154,"price":14.99,"purchased":"2024-12-18","status":"owned","id":"i154"},{"added":"2026-09-30","brand":"Amacool","buySimilar":true,"buyUrl":"https://www.amazon.com/stores/AMACOOL/page/C9B41298-C818-4827-AAFB-8D169B31F776","category":"Home","kind":"item","name":"Fan","no":155,"price":17.69,"purchased":"2024-12-02","status":"owned","id":"i155"},{"added":"2026-09-30","brand":"JBL","buyUrl":"https://www.jbl.com/CLIP-5.html","category":"Tech","history":[{"d":"2026-09-30","src":"Target refurb","v":35},{"d":"2026-10-01","src":"Swappa sold + PayMore","v":35},{"d":"2026-10-02","src":"Swappa sold","v":35},{"d":"2026-10-03","src":"Swappa avg sale","v":35},{"d":"2026-10-04","src":"Swappa avg sale","v":35},{"d":"2026-10-06","src":"Swappa avg sale","v":38},{"d":"2026-10-07","src":"Swappa avg sale","v":38}],"kind":"item","name":"JBL Clip5","no":156,"price":49.95,"purchased":"2024-12-02","status":"owned","trackValue":true,"value":38,"valueRange":"$30\u2013$45","valueSource":"Swappa recent sale $38","valueUpdated":"2026-10-07","id":"i156"},{"added":"2026-09-30","brand":"AstroAI","buyUrl":"https://www.amazon.com/AstroAI-Winter-Balaclava-Windproof-Thermal/dp/B07Y2VXJ22","category":"Clothing","kind":"item","name":"Winter Balaclava","no":157,"price":9.99,"purchased":"2023-11-24","status":"owned","id":"i157"},{"added":"2026-09-30","brand":"Flipper Devices","buyUrl":"https://flipper.net/products/flipper-zero","category":"Tech","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"gift":true,"history":[{"d":"2026-09-30","src":"Poshmark + eBay listings","v":160}],"kind":"item","name":"Flipper Zero","no":158,"price":170,"status":"gone","trackValue":true,"value":160,"valueRange":"$125\u2013$220","valueSource":"Poshmark + eBay listings","valueUpdated":"2026-09-30","id":"i158"},{"added":"2026-09-30","buySimilar":true,"buyUrl":"https://nutiva.com/products/organic-virgin-coconut-oil","category":"Personal Care","consumable":true,"kind":"item","name":"Coconut Oil","no":159,"status":"owned","id":"i159"},{"added":"2026-09-30","brand":"Namecheap","category":"Subscriptions","cost":10.97,"due":"Apr 18","kind":"subscription","manageUrl":"https://www.namecheap.com/","name":"Domain: itsnow.co","no":160,"notes":"Needs a payment method on Namecheap","period":"year","status":"owned","id":"i160"},{"added":"2026-09-30","category":"Art & Keepsakes","gift":true,"kind":"item","name":"Purple Long Sleeve","no":161,"notes":"Gift for volunteering","purchased":"2024-04-27","sentimental":true,"status":"owned","id":"i161"},{"added":"2026-09-30","brand":"Ry's (technically)","category":"Clothing","kind":"item","name":"DairyMan's Edge","no":162,"purchased":"2024-04-28","status":"owned","id":"i162"},{"added":"2026-09-30","category":"Art & Keepsakes","kind":"item","name":"Thick Long Sleeve","no":163,"notes":"From Sierra","price":10,"sentimental":true,"status":"owned","id":"i163"},{"added":"2026-09-30","brand":"Wix","category":"Subscriptions","cost":576,"due":"2027-05-20","kind":"subscription","manageUrl":"https://www.wix.com/","name":"Wix Premium \"Core\" Plan","no":164,"period":"2 years","status":"owned","id":"i164"},{"added":"2026-09-30","brand":"Wix","category":"Subscriptions","cost":31.25,"due":"May 25","kind":"subscription","manageUrl":"https://www.wix.com/","name":"Wix Domain: MadiandErik.com","no":165,"period":"year","status":"owned","id":"i165"},{"added":"2026-09-30","brand":"Wix","category":"Subscriptions","cost":3.99,"due":"24th","kind":"subscription","manageUrl":"https://www.wix.com/","name":"Wix PayPal Donation Button","no":166,"period":"month","status":"owned","id":"i166"},{"added":"2026-09-30","brand":"State of NH","category":"Bills","cost":102,"due":"Apr 1","kind":"bill","name":"LLC Annual Filing","no":167,"period":"year","status":"owned","id":"i167"},{"added":"2026-09-30","category":"Bills","cost":49,"due":"Jan 30","kind":"bill","name":"NH Registered Agent","no":168,"period":"year","status":"owned","id":"i168"},{"added":"2026-09-30","brand":"CapCut","category":"Subscriptions","cost":179,"due":"2026-12-01","kind":"subscription","manageUrl":"https://www.capcut.com/","name":"CapCut Annual","no":169,"period":"year","status":"owned","id":"i169"},{"added":"2026-09-30","brand":"Carrd","category":"Subscriptions","closed":{"note":"Marked as no longer mine in the original spreadsheet","reason":"let_go"},"cost":19,"due":"Mar 26","kind":"subscription","manageUrl":"https://carrd.co/","name":"Carrd.co Pro Plan","no":170,"period":"year","purchased":"2026-03-26","status":"gone","id":"i170"},{"added":"2026-09-30","brand":"Suno","category":"Subscriptions","cost":10,"due":"21st","kind":"subscription","manageUrl":"https://suno.com/","name":"Suno AI","no":171,"period":"month","status":"owned","id":"i171"}]}</script>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const I=(p,w)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w||1.6}" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const ICONS={
+  "Tech":'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
+  "Camera & Video":'<path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.8l1.4-2h6.6l1.4 2h2.8A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z"/><circle cx="12" cy="13" r="3.6"/>',
+  "Storage":'<rect x="4" y="4" width="16" height="16" rx="2.5"/><circle cx="12" cy="11" r="3.5"/><path d="M12 11h.01M8 17h8"/>',
+  "Vehicle":'<path d="M3.5 15.5v-3l2-4.5a2 2 0 0 1 1.8-1.2h9.4a2 2 0 0 1 1.8 1.2l2 4.5v3a1 1 0 0 1-1 1h-16a1 1 0 0 1-1-1z"/><circle cx="7.5" cy="16.5" r="1.8"/><circle cx="16.5" cy="16.5" r="1.8"/><path d="M4.5 12h15"/>',
+  "Art & Keepsakes":'<rect x="3.5" y="4" width="17" height="16" rx="1.5"/><path d="m6.5 16 4-5 3 3.5 2-2 2.5 3.5"/><circle cx="15.5" cy="8.5" r="1.3"/>',
+  "Personal Care":'<path d="M12 3s6 6.4 6 11a6 6 0 0 1-12 0c0-4.6 6-11 6-11z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/>',
+  "Health & Recovery":'<path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7a4.3 4.3 0 0 1 7.5 2.8C19.5 15.4 12 20 12 20z"/><path d="M7 12h3l1.2-2 1.6 4 1.2-2h3"/>',
+  "Clothing":'<path d="M8.5 3.5 4 6l1.5 4.5L7.5 10v10.5h9V10l2 .5L20 6l-4.5-2.5a3.5 3.5 0 0 1-7 0z"/>',
+  "Footwear":'<path d="M3.5 15.5V8.5l4 .5 2 3 4.5 1.5 5 1c1 .2 1.5 1 1.5 2v1.5h-17z"/><path d="M3.5 15.5h17"/>',
+  "Bags & Carry":'<path d="M7 8V6.5a5 5 0 0 1 10 0V8"/><rect x="5" y="8" width="14" height="13" rx="3"/><path d="M9 14h6v3H9z"/>',
+  "Outdoor & Travel":'<path d="m2.5 19.5 7-11 4 6 2.5-3.5 5.5 8.5z"/><circle cx="17" cy="6" r="1.8"/>',
+  "Home":'<path d="M4 10.5 12 4l8 6.5V20H4z"/><path d="M10 20v-5h4v5"/>',
+  "Safety":'<path d="M12 3 5 6v5.5c0 4.2 3 7.8 7 9.5 4-1.7 7-5.3 7-9.5V6z"/><path d="m9 12 2 2 4-4"/>',
+  "Stationery":'<path d="M15.5 4.5 19.5 8.5 9 19H5v-4z"/><path d="m13.5 6.5 4 4"/>',
+  "Documents & Cards":'<rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3 9.5h18M6.5 14.5h4"/>',
+  "Subscriptions":'<path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5"/><path d="M20 4v4.5h-4.5"/><path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.5"/><path d="M4 20v-4.5h4.5"/>',
+  "Bills":'<path d="M6 3h12v18l-2.5-1.5L13 21l-2-1.5L8.5 21 6 19.5z"/><path d="M9 8h6M9 11.5h6M9 15h3"/>',
+  "Other":'<rect x="4" y="7" width="16" height="13" rx="2"/><path d="M4 11h16M9 7V4h6v3"/>'
+};
+const HUES={"Tech":222,"Camera & Video":262,"Storage":200,"Vehicle":8,"Art & Keepsakes":330,"Personal Care":178,"Health & Recovery":350,"Clothing":28,"Footwear":45,"Bags & Carry":95,"Outdoor & Travel":140,"Home":60,"Safety":0,"Stationery":245,"Documents & Cards":210,"Subscriptions":280,"Bills":160,"Other":215};
+const THING_CATS=["Tech","Camera & Video","Storage","Vehicle","Clothing","Footwear","Bags & Carry","Outdoor & Travel","Personal Care","Health & Recovery","Home","Safety","Stationery","Art & Keepsakes","Other"];
+const ALL_CATS=THING_CATS.concat(["Documents & Cards","Subscriptions","Bills"]);
+const PERIODS={"month":1,"year":1/12,"6 months":1/6,"3 months":1/3,"2 years":1/24,"week":52/12};
+const REASONS=[["let_go","Let go on purpose"],["sold","Sold"],["gifted","Gave away"],["donated","Donated"],["used_up","Used up"],["broken","Broke"],["lost","Lost"],["returned","Returned"],["trashed","Threw out"]];
+const REASON_LABEL=Object.fromEntries(REASONS);
+
+const money=(n,d)=>n==null||isNaN(n)?"—":"$"+Number(n).toLocaleString("en-US",{minimumFractionDigits:d??(n%1?2:0),maximumFractionDigits:d??2});
+const fmtDate=s=>{if(!s)return"";const d=new Date(s+"T12:00:00");return isNaN(d)?s:d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})};
+const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const tagNo=n=>"No. "+String(n||0).padStart(3,"0");
+const monthly=it=>(it.cost||0)*(PERIODS[it.period]??1);
+const worth=it=>(it.value!=null?it.value:(it.price||0))*(it.qty||1);
+const isThing=it=>(it.kind||"item")==="item";
+const isOwned=it=>(it.status||"owned")==="owned";
+const q=s=>encodeURIComponent(s);
+function buyLink(it){ if(it.buyUrl) return it.buyUrl; return "https://www.amazon.com/s?k="+q([it.brand,it.name].filter(Boolean).join(" ").replace(/#\d+|\(.*?\)/g,"").trim()); }
+const STORES={amazon:"Amazon",walmart:"Walmart",target:"Target",bestbuy:"Best Buy",bhphotovideo:"B&H",ebay:"eBay",swappa:"Swappa",cargurus:"CarGurus",acehardware:"Ace",vitacost:"Vitacost",wholefoodsmarket:"Whole Foods",evo:"evo",adorama:"Adorama",staples:"Staples",ems:"EMS",kentfaith:"K&F Concept",usa:"Philips",nam:"BIC",thenorthface:"The North Face",ralphlauren:"Ralph Lauren",outdoorresearch:"Outdoor Research",allbirds:"Allbirds",smartwool:"Smartwool",packtowl:"PackTowl",westerndigital:"WD",dji:"DJI",jbl:"JBL",lifestraw:"LifeStraw",drbronner:"Dr. Bronner's",burtsbees:"Burt's Bees",mace:"Mace",taser:"TASER",ledger:"Ledger",flipper:"Flipper",apple:"Apple",anker:"Anker",sandisk:"SanDisk",seagate:"Seagate",rode:"RØDE",columbia:"Columbia",vibram:"Vibram",speedo:"Speedo",zerowater:"ZeroWater",invisibobble:"invisibobble",pelican:"Pelican",sharpie:"Sharpie",gosun:"GoSun",feelworld:"FeelWorld",amarancreators:"amaran",tuneupfitness:"Tune Up Fitness",cliganic:"Cliganic",vapur:"Vapur",renpho:"RENPHO",snailax:"Snailax",ulanzi:"Ulanzi",nutiva:"Nutiva",uniballco:"uni-ball",injinji:"Injinji",adidas:"adidas",explodingkittens:"Exploding Kittens",portagenotebooks:"Portage",aspenkaynaturals:"Aspen Kay",rocketpure:"Rocket Pure",merino:"Merino.tech"};
+function storeName(u){ try{ const h=new URL(u).hostname.replace(/^(www|us|shop|store|m)\./,""); const k=h.split(".")[0]; return STORES[k]||h; }catch(e){ return ""; } }
+function valueLink(it){
+  if(it.valueUrl) return it.valueUrl;
+  if(it.category==="Vehicle") return "https://www.kbb.com/";
+  return "https://www.ebay.com/sch/i.html?LH_Sold=1&LH_Complete=1&_nkw="+q([it.brand,it.name].filter(Boolean).join(" ").replace(/#\d+/g,"").trim());
+}
+
+/* state */
+let items=new Map(), loaded=false;
+let tab="things", cat=null, flag=null, layout="grid", sort="no", query="";
+let canWrite=false, isOwner=false, db=null, assets=null, mcp=null, sample=null, downloads=null;
+let openId=null, mode="view";
+try{ layout=localStorage.getItem("inv.layout")||"grid"; sort=localStorage.getItem("inv.sort")||"no"; }catch(e){}
+$("#sort").value=sort;
+
+function toast(t){const el=$("#toast");el.textContent=t;el.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove("on"),2600);}
+
+function thumbHTML(it,big){
+  const h=HUES[it.category]??215;
+  const img=it.photoId?`<img src="/_blob/${esc(it.photoId)}" alt="${esc(it.name)}" loading="lazy" onerror="this.remove()">`:"";
+  return `<div class="thumb" style="--h:${h}">${img||`<div class="ico">${I(ICONS[it.category]||ICONS.Other,big?1.2:1.5)}</div>`}</div>`;
+}
+function pills(it){
+  const p=[];
+  if(!isOwned(it)) p.push(`<span class="pill gone">${esc(REASON_LABEL[it.closed?.reason]||"Let go")}</span>`);
+  else{
+    if(it.trackValue) p.push('<span class="pill live">Tracked</span>');
+    if(it.consumable) p.push('<span class="pill refill">Refill</span>');
+    if(it.sentimental) p.push('<span class="pill heart">Sentimental</span>');
+  }
+  return p.join("");
+}
+function priceLine(it){
+  if(!isOwned(it)&&it.closed?.amount!=null) return `${money(it.closed.amount)} <small>sold</small>`;
+  if(it.kind==="subscription"||it.kind==="bill") return it.cost!=null?`${money(it.cost)} <small>/ ${esc(it.period||"month")}</small>`:"";
+  if(it.value!=null) return `${money(it.value)} <small>now</small>`;
+  if(it.price!=null) return `${money(it.price)}${it.gift?' <small>gift</small>':''}`;
+  return it.gift?'<small>Gift</small>':'';
+}
+
+/* filtering */
+function inTab(it){
+  if(tab==="gone") return !isOwned(it);
+  if(!isOwned(it)) return false;
+  if(tab==="things") return isThing(it);
+  if(tab==="recurring") return it.kind==="subscription"||it.kind==="bill";
+  if(tab==="docs") return it.kind==="document";
+}
+function matches(it){
+  if(cat && it.category!==cat) return false;
+  if(flag==="track"&&!it.trackValue) return false;
+  if(flag==="refill"&&!it.consumable) return false;
+  if(flag==="heart"&&!it.sentimental) return false;
+  if(flag==="nophoto"&&it.photoId) return false;
+  if(query){
+    const hay=[it.name,it.brand,it.notes,it.serial,it.category,it.location,tagNo(it.no)].join(" ").toLowerCase();
+    if(!query.split(/\s+/).every(w=>hay.includes(w))) return false;
+  }
+  return true;
+}
+function sorted(list){
+  const by={
+    no:(a,b)=>(a.no||0)-(b.no||0),
+    recent:(a,b)=>String(b.added||"").localeCompare(String(a.added||""))||(b.no||0)-(a.no||0),
+    name:(a,b)=>a.name.localeCompare(b.name),
+    value:(a,b)=>(tab==="recurring"?monthly(b)-monthly(a):worth(b)-worth(a)),
+    date:(a,b)=>String(b.purchased||"").localeCompare(String(a.purchased||""))
+  };
+  if(tab==="gone") return list.sort((a,b)=>String(b.closed?.date||"").localeCompare(String(a.closed?.date||""))||(a.no||0)-(b.no||0));
+  return list.sort(by[sort]||by.no);
+}
+
+/* render */
+function renderSummary(){
+  const all=[...items.values()];
+  const owned=all.filter(i=>isOwned(i)&&isThing(i));
+  const count=owned.reduce((s,i)=>s+(i.qty||1),0);
+  $("#sCount").textContent=count.toLocaleString();
+  $("#sCountS").textContent=new Set(owned.map(i=>i.category)).size+" categories";
+  const w=owned.reduce((s,i)=>s+worth(i),0);
+  $("#sWorth").textContent=money(Math.round(w),0);
+  const tracked=owned.filter(i=>i.trackValue&&i.valueUpdated).map(i=>i.valueUpdated).sort().pop();
+  $("#sWorthS").textContent=tracked?"Market prices checked "+fmtDate(tracked):"Purchase prices until market check";
+  const rec=all.filter(i=>isOwned(i)&&(i.kind==="subscription"||i.kind==="bill"));
+  const m=rec.reduce((s,i)=>s+monthly(i),0);
+  $("#sMonthly").innerHTML=money(Math.round(m),0)+'<span style="font-size:.5em;color:var(--muted);font-weight:500"> /mo</span>';
+  $("#sMonthlyS").textContent=money(Math.round(m*12),0)+" a year · "+rec.length+" running";
+  const gone=all.filter(i=>!isOwned(i));
+  $("#sGone").textContent=gone.length;
+  const recouped=gone.reduce((s,i)=>s+(i.closed?.amount||0),0);
+  $("#sGoneS").textContent=recouped?money(recouped,0)+" recouped from sales":"Sold, given, used up";
+  $("#nThings").textContent=owned.length;
+  $("#nRec").textContent=rec.length;
+  $("#nDocs").textContent=all.filter(i=>isOwned(i)&&i.kind==="document").length;
+  $("#nGone").textContent=gone.length||"";
+}
+function renderChips(){
+  const pool=[...items.values()].filter(inTab);
+  const counts={};pool.forEach(i=>counts[i.category]=(counts[i.category]||0)+1);
+  const cats=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+  let h=`<button class="chip" data-cat="" aria-pressed="${!cat}">All</button>`;
+  if(tab==="things"){
+    h+=`<button class="chip flag" data-flag="track" aria-pressed="${flag==="track"}">Tracked value</button>`;
+    h+=`<button class="chip flag" data-flag="refill" aria-pressed="${flag==="refill"}">Refill</button>`;
+    h+=`<button class="chip flag" data-flag="heart" aria-pressed="${flag==="heart"}">Sentimental</button>`;
+    h+=`<button class="chip flag" data-flag="nophoto" aria-pressed="${flag==="nophoto"}">Needs photo</button>`;
+  }
+  if(cats.length>1) cats.forEach(c=>h+=`<button class="chip" data-cat="${esc(c)}" aria-pressed="${cat===c}" style="--h:${HUES[c]??215}"><span class="dot"></span>${esc(c)} <span class="mono" style="opacity:.6">${counts[c]}</span></button>`);
+  $("#chips").innerHTML=h;
+}
+function cardHTML(it){
+  return `<button class="card${isOwned(it)?"":" isgone"}" data-id="${esc(it.id)}">
+    <div style="position:relative">${thumbHTML(it)}<span class="tagno">${tagNo(it.no)}</span>${(it.qty||1)>1?`<span class="qty">×${it.qty}</span>`:""}</div>
+    <div class="cbody"><div class="cname">${esc(it.name)}</div><div class="cbrand">${esc(it.brand||it.category)}</div>
+    <div class="crow"><span class="price">${priceLine(it)}</span><span class="pills">${pills(it)}</span></div></div></button>`;
+}
+function rowHTML(it){
+  let sub=esc(it.brand||it.category);
+  if(it.kind==="subscription"||it.kind==="bill") sub=esc([it.brand,it.due?"Due "+it.due:""].filter(Boolean).join(" · "));
+  if(tab==="gone") sub=esc((REASON_LABEL[it.closed?.reason]||"Let go")+(it.closed?.date?" · "+fmtDate(it.closed.date):""));
+  return `<button class="row" data-id="${esc(it.id)}">${thumbHTML(it)}<div class="meta"><div class="cname">${esc(it.name)}</div><div class="cbrand">${tagNo(it.no)} · ${sub}</div></div>
+    <div class="right"><span class="price">${priceLine(it)}</span><span class="pills">${pills(it)}</span></div></button>`;
+}
+function render(){
+  if(!loaded) return;
+  renderSummary(); renderChips();
+  $("#vGrid").setAttribute("aria-pressed",layout==="grid");$("#vList").setAttribute("aria-pressed",layout==="list");
+  const list=sorted([...items.values()].filter(i=>inTab(i)&&matches(i)));
+  let h="";
+  if(tab==="recurring"){
+    const all=[...items.values()].filter(inTab);
+    const m=all.reduce((s,i)=>s+monthly(i),0);
+    h+=`<div class="subsum"><div><b>${money(m,2)}</b> <span>per month</span></div><div><b>${money(m*12,0)}</b> <span>per year</span></div><div><span>${all.filter(i=>i.kind==="subscription").length} subscriptions · ${all.filter(i=>i.kind==="bill").length} bills</span></div></div>`;
+  }
+  if(!items.size){
+    h+=`<div class="empty"><h3>Nothing catalogued yet</h3>${canWrite?"Tap <b>Add item</b> to log the first thing you own.":"Items appear here once they're added."}</div>`;
+  } else if(!list.length){
+    h+=`<div class="empty"><h3>No matches</h3>${tab==="gone"?"When you sell, give away or use up something, it moves here with the date and reason.":"Try a different search or category."}</div>`;
+  } else if(layout==="grid"&&tab!=="recurring"){
+    h+=`<div class="grid">${list.map(cardHTML).join("")}</div>`;
+  } else {
+    h+=`<div class="list">${list.map(rowHTML).join("")}</div>`;
+  }
+  $("#view").innerHTML=h;
+  renderImportNote();
+  if(openId&&mode==="view"&&items.has(openId)) renderDetail(items.get(openId));
+}
+
+/* detail */
+function spark(hist){
+  if(!hist||hist.length<2) return "";
+  const W=400,H=64,P=6; const vs=hist.map(p=>p.v); const mn=Math.min(...vs),mx=Math.max(...vs); const r=mx-mn||1;
+  const pts=hist.map((p,i)=>[P+i*(W-2*P)/(hist.length-1),H-P-(p.v-mn)/r*(H-2*P)]);
+  const d=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+  const last=pts[pts.length-1];
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    <path d="${d} L${last[0]} ${H} L${P} ${H}Z" fill="var(--accent)" opacity=".12"/>
+    <path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/>
+    <circle cx="${last[0]}" cy="${last[1]}" r="3.5" fill="var(--accent)"/></svg>`;
+}
+function openDrawer(){ $("#drawer").classList.add("on"); $("#scrim").classList.add("on"); }
+function closeDrawer(){ $("#drawer").classList.remove("on"); $("#scrim").classList.remove("on"); openId=null; mode="view"; }
+function fact(k,v){ return v?`<dt>${k}</dt><dd>${v}</dd>`:""; }
+function renderDetail(it){
+  $("#dLabel").textContent=tagNo(it.no)+" · "+it.category;
+  const rec=it.kind==="subscription"||it.kind==="bill";
+  let a="";
+  if(isOwned(it)){
+    if(rec){ if(it.manageUrl) a+=`<a class="btn primary" href="${esc(it.manageUrl)}" target="_blank" rel="noopener">Manage plan</a>`; }
+    else if(it.kind==="item"){
+      a+=`<a class="btn ${it.consumable?"primary":""}" href="${esc(buyLink(it))}" target="_blank" rel="noopener">${I('<path d="M3 4h2l2.4 11.2a1.5 1.5 0 0 0 1.5 1.3h8.6a1.5 1.5 0 0 0 1.5-1.2L20.5 8H6"/><circle cx="9" cy="20" r="1.2"/><circle cx="17" cy="20" r="1.2"/>',2)}${it.buyUrl?(it.consumable?"Reorder":it.buySimilar?"Shop similar":"Buy again")+" at "+esc(storeName(it.buyUrl)):(it.consumable?"Reorder":"Search Amazon")}</a>`;
+      a+=`<a class="btn ${it.trackValue&&!it.consumable?"primary":""}" href="${esc(valueLink(it))}" target="_blank" rel="noopener">${I('<path d="M4 18 9 12l4 3 7-8"/><path d="M15 7h5v5"/>',2)}Market price</a>`;
+    }
+  }
+  if(it.driveId) a+=`<a class="btn ghost" href="https://drive.google.com/file/d/${esc(it.driveId)}/view" target="_blank" rel="noopener">Original photo</a>`;
+  let vb="";
+  if(it.kind==="item"&&(it.trackValue||it.value!=null)){
+    const h=it.history||[]; let delta="";
+    if(it.price&&it.value!=null){const d=it.value-it.price;delta=`<span class="delta ${d>=0?"up":"down"}">${d>=0?"+":"−"}${money(Math.abs(d),0)} vs. ${money(it.price,0)} paid</span>`;}
+    vb=`<div class="valuebox"><div class="eyebrow">${it.trackValue?"Market value · checked daily":"Current value"}</div>
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><span class="big">${it.value!=null?money(it.value,0):"Not checked yet"}</span>${delta}</div>
+      ${spark(h)}
+      <div class="hint">${it.valueUpdated?"Updated "+fmtDate(it.valueUpdated):"The daily price check fills this in."}${it.valueSource?" · "+esc(it.valueSource):""}${it.valueRange?" · range "+esc(it.valueRange):""}</div></div>`;
+  }
+  let facts="";
+  if(rec){
+    facts+=fact("Cost",it.cost!=null?`<span class="mono">${money(it.cost)}</span> per ${esc(it.period||"month")}`:"");
+    facts+=fact("Per month",it.cost!=null?`<span class="mono">${money(monthly(it))}</span>`:"");
+    facts+=fact("Renews / due",esc(it.due||""));
+  } else {
+    facts+=fact("Brand",esc(it.brand||""));
+    facts+=fact("Paid",it.price!=null?`<span class="mono">${money(it.price)}</span>${it.gift?" (gift)":""}`:(it.gift?"Gift":""));
+    facts+=fact("Bought",fmtDate(it.purchased));
+    facts+=fact("Quantity",(it.qty||1)>1?String(it.qty):"");
+    facts+=fact("Mileage",it.mileage?`<span class="mono">${Number(it.mileage).toLocaleString()} mi</span>${it.mileageDate?` <span class="hint">as of ${fmtDate(it.mileageDate)}</span>`:""}`:"");
+    facts+=fact("Serial / model",it.serial?`<span class="mono">${esc(it.serial)}</span>`:"");
+    facts+=fact("Used",esc(it.usage||""));
+    facts+=fact("Kept at",esc(it.location||""));
+  }
+  if(!isOwned(it)&&it.closed){ facts+=fact("Let go",esc((REASON_LABEL[it.closed.reason]||"")+(it.closed.date?" · "+fmtDate(it.closed.date):""))); facts+=fact("Got back",it.closed.amount!=null?`<span class="mono">${money(it.closed.amount)}</span>`:""); facts+=fact("To",esc(it.closed.to||"")); facts+=fact("Note",esc(it.closed.note||"")); }
+  facts+=fact("Logged",fmtDate(it.added));
+  $("#dBody").innerHTML=`
+    <div class="hero">${thumbHTML(it,true)}</div>
+    <div><h2 class="dtitle">${esc(it.name)}</h2><div class="dsub">${pills(it)?`<span class="pills" style="display:inline-flex;vertical-align:middle">${pills(it)}</span>`:""}</div></div>
+    ${a?`<div class="actions">${a}</div>`:""}
+    ${vb}
+    ${it.notes?`<div class="note">${esc(it.notes)}</div>`:""}
+    <dl class="facts">${facts}</dl>`;
+  const f=$("#dFoot");
+  if(canWrite){
+    f.hidden=false;
+    f.innerHTML=(isOwned(it)?`<button class="btn danger ghost" id="goBtn">Let go of this</button>`:`<button class="btn ghost" id="restoreBtn">Move back to my things</button>`)+
+      `<button class="btn" id="photoBtn">${it.photoId?"Change photo":"Add photo"}</button><button class="btn primary" id="editBtn">Edit</button>`;
+    $("#editBtn").onclick=()=>renderForm(it);
+    $("#photoBtn").onclick=()=>pickPhoto(async blob=>{await savePhoto(it.id,blob);});
+    if($("#goBtn")) $("#goBtn").onclick=()=>renderLetGo(it);
+    if($("#restoreBtn")) $("#restoreBtn").onclick=async()=>{await write(it.id,{status:"owned",closed:{__del:1}});toast("Back in your things");};
+  } else f.hidden=true;
+}
+function openItem(id){ const it=items.get(id); if(!it) return; openId=id; mode="view"; renderDetail(it); $("#dBody").scrollTop=0; openDrawer(); }
+
+/* forms */
+let draftPhoto=null;
+function renderForm(it){
+  mode="edit"; const isNew=!it; it=it||{kind:tab==="recurring"?"subscription":tab==="docs"?"document":"item",category:tab==="recurring"?"Subscriptions":tab==="docs"?"Documents & Cards":(cat||"")};
+  draftPhoto=null;
+  openId=isNew?null:it.id;
+  $("#dLabel").textContent=isNew?"New entry":"Editing "+tagNo(it.no);
+  const opt=(v,l,s)=>`<option value="${esc(v)}"${s?" selected":""}>${esc(l)}</option>`;
+  const kinds=[["item","A thing I own"],["subscription","Subscription"],["bill","Bill"],["document","Document or card"]];
+  $("#dBody").innerHTML=`<form class="form" id="itemForm" novalidate>
+    <div class="photo-drop" id="drop" tabindex="0" role="button" aria-label="Add a photo">${it.photoId?`<img src="/_blob/${esc(it.photoId)}" alt="">`:""}<div><b>Add a photo</b><br><span class="hint">Tap to take or choose one, or drop it here</span></div></div>
+    <label class="fld">What is it?<input id="f_name" required value="${esc(it.name||"")}" placeholder="e.g. Sony WH-1000XM5 headphones"></label>
+    ${sample?`<button type="button" class="btn" id="aiFill">${I('<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',2)}Fill in the rest with Claude</button>`:""}
+    <div class="f2">
+      <label class="fld">Type<select id="f_kind">${kinds.map(([v,l])=>opt(v,l,it.kind===v)).join("")}</select></label>
+      <label class="fld">Category<select id="f_cat">${ALL_CATS.map(c=>opt(c,c,it.category===c)).join("")}</select></label>
+    </div>
+    <label class="fld">Brand<input id="f_brand" value="${esc(it.brand||"")}"></label>
+    <div class="f2 onlyitem">
+      <label class="fld">Price paid<input id="f_price" inputmode="decimal" value="${it.price??""}" placeholder="0.00"></label>
+      <label class="fld">Date bought<input id="f_date" type="date" value="${esc(it.purchased||"")}"></label>
+    </div>
+    <div class="f2 onlyitem">
+      <label class="fld">Quantity<input id="f_qty" inputmode="numeric" value="${it.qty||1}"></label>
+      <label class="fld">Current value <span class="h">optional</span><input id="f_value" inputmode="decimal" value="${it.value??""}"></label>
+    </div>
+    <div class="f2 onlyrec">
+      <label class="fld">Cost<input id="f_cost" inputmode="decimal" value="${it.cost??""}"></label>
+      <label class="fld">Every<select id="f_period">${Object.keys(PERIODS).map(p=>opt(p,p,(it.period||"month")===p)).join("")}</select></label>
+    </div>
+    <label class="fld onlyrec">Renews / due<input id="f_due" value="${esc(it.due||"")}" placeholder="e.g. 27th, or 2027-05-20"></label>
+    <label class="fld onlyrec">Link to manage it<input id="f_manage" type="url" value="${esc(it.manageUrl||"")}" placeholder="https://"></label>
+    <div class="f2 onlyitem">
+      <label class="fld">Serial / model<input id="f_serial" value="${esc(it.serial||"")}"></label>
+      <label class="fld">How often I use it<select id="f_usage">${["","Everyday","Every Week","Every Month","Every Year","Rarely"].map(u=>opt(u,u||"—",(it.usage||"")===u)).join("")}</select></label>
+    </div>
+    <label class="fld onlyitem">Kept at <span class="h">optional</span><input id="f_loc" value="${esc(it.location||"")}"></label>
+    <label class="fld onlyitem">Where to buy more <span class="h">leave blank to search Amazon</span><input id="f_buy" type="url" value="${esc(it.buyUrl||"")}" placeholder="https://"></label>
+    <label class="fld onlyitem">Where to check its price <span class="h">leave blank for eBay sold listings</span><input id="f_vurl" type="url" value="${esc(it.valueUrl||"")}" placeholder="https://"></label>
+    <label class="fld">Notes<textarea id="f_notes" placeholder="Where it came from, sizes, materials, the story…">${esc(it.notes||"")}</textarea></label>
+    <div class="onlyitem" style="display:flex;flex-direction:column;gap:10px">
+      <label class="check"><input type="checkbox" id="f_track" ${it.trackValue?"checked":""}><span><b>Track its market price daily</b><br><span class="hint">For bigger things with a resale market, like a car, camera or laptop.</span></span></label>
+      <label class="check"><input type="checkbox" id="f_cons" ${it.consumable?"checked":""}><span><b>I run out of this</b><br><span class="hint">Shows a Reorder button and the Refill tag.</span></span></label>
+      <label class="check"><input type="checkbox" id="f_heart" ${it.sentimental?"checked":""}><span><b>Sentimental</b></span></label>
+    </div>
+    <p class="err" id="formErr" hidden></p>
+  </form>`;
+  const syncKind=()=>{const k=$("#f_kind").value;document.querySelectorAll(".onlyitem").forEach(e=>e.hidden=k!=="item");document.querySelectorAll(".onlyrec").forEach(e=>e.hidden=!(k==="subscription"||k==="bill"));
+    if(k==="subscription")$("#f_cat").value="Subscriptions"; if(k==="bill")$("#f_cat").value="Bills"; if(k==="document")$("#f_cat").value="Documents & Cards";};
+  $("#f_kind").onchange=syncKind; syncKind();
+  const drop=$("#drop");
+  const setPreview=blob=>{draftPhoto=blob;drop.querySelector("img")?.remove();const im=document.createElement("img");im.src=URL.createObjectURL(blob);im.alt="";drop.prepend(im);};
+  drop.onclick=()=>pickPhoto(setPreview);
+  drop.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();pickPhoto(setPreview);}};
+  drop.ondragover=e=>{e.preventDefault();drop.classList.add("over")};
+  drop.ondragleave=()=>drop.classList.remove("over");
+  drop.ondrop=e=>{e.preventDefault();drop.classList.remove("over");const f=e.dataTransfer.files[0];if(f&&f.type.startsWith("image/"))setPreview(f);};
+  if($("#aiFill")) $("#aiFill").onclick=aiFill;
+  const f=$("#dFoot"); f.hidden=false;
+  f.innerHTML=`<button class="btn ghost" id="cancelBtn">Cancel</button><button class="btn primary" id="saveBtn">${isNew?"Add to inventory":"Save changes"}</button>`;
+  $("#cancelBtn").onclick=()=>isNew?closeDrawer():openItem(it.id);
+  $("#saveBtn").onclick=()=>saveForm(isNew?null:it);
+  $("#itemForm").onsubmit=e=>{e.preventDefault();saveForm(isNew?null:it)};
+  $("#dBody").scrollTop=0; openDrawer(); setTimeout(()=>$("#f_name").focus(),250);
+}
+const numOrNull=v=>{v=String(v||"").replace(/[$,\s]/g,"");return v===""||isNaN(+v)?null:+v;};
+async function saveForm(old){
+  const name=$("#f_name").value.trim();
+  const err=$("#formErr");
+  if(!name){err.textContent="Give it a name first.";err.hidden=false;$("#f_name").focus();return;}
+  const kind=$("#f_kind").value;
+  const d={name,kind,category:$("#f_cat").value,brand:$("#f_brand").value.trim(),notes:$("#f_notes").value.trim()};
+  if(kind==="item"){
+    Object.assign(d,{price:numOrNull($("#f_price").value),purchased:$("#f_date").value,qty:Math.max(1,parseInt($("#f_qty").value)||1),value:numOrNull($("#f_value").value),
+      serial:$("#f_serial").value.trim(),usage:$("#f_usage").value,location:$("#f_loc").value.trim(),buyUrl:$("#f_buy").value.trim(),valueUrl:$("#f_vurl").value.trim(),
+      trackValue:$("#f_track").checked,consumable:$("#f_cons").checked,sentimental:$("#f_heart").checked});
+  } else if(kind!=="document"){
+    Object.assign(d,{cost:numOrNull($("#f_cost").value),period:$("#f_period").value,due:$("#f_due").value.trim(),manageUrl:$("#f_manage").value.trim()});
+  }
+  const btn=$("#saveBtn"); btn.disabled=true; btn.textContent="Saving…";
+  try{
+    let id;
+    if(old){ id=old.id; if(old.value!==d.value&&d.value!=null){ d.valueUpdated=today(); d.valueSource="Entered by hand"; d.history=(old.history||[]).concat([{d:today(),v:d.value,src:"manual"}]).slice(-180);} await write(id,d); }
+    else{
+      const no=Math.max(0,...[...items.values()].map(i=>i.no||0))+1;
+      id="i"+String(no).padStart(3,"0")+"-"+Math.random().toString(36).slice(2,6);
+      Object.assign(d,{no,status:"owned",added:today()});
+      if(d.value!=null){d.valueUpdated=today();d.history=[{d:today(),v:d.value,src:"manual"}];}
+      clean(d); await db.doc("items/"+id).set(d);
+    }
+    if(draftPhoto) await savePhoto(id,draftPhoto,true);
+    toast(old?"Saved":"Added to your inventory"); openItem(id);
+  }catch(e){ err.textContent=writeError(e); err.hidden=false; btn.disabled=false; btn.textContent="Try again"; }
+}
+function clean(d){ for(const k of Object.keys(d)){ if(d[k]===""||d[k]==null||(d[k]===false)) delete d[k]; } return d; }
+async function write(id,patch){
+  const next=Object.assign({},items.get(id)||{}); delete next.id;
+  for(const [k,v] of Object.entries(patch)){
+    if(v===""||v==null||v===false||(v&&typeof v==="object"&&v.__del)) delete next[k]; else next[k]=v;
+  }
+  await db.doc("items/"+id).set(next);
+}
+function writeError(e){
+  const c=e&&e.code;
+  if(c==="invalid_argument") return "You don't have permission to change this inventory.";
+  if(c==="quota_exceeded") return "The inventory is full. Remove a few old entries and try again.";
+  if(c==="revoked") return "Access to this page changed. Reload to continue.";
+  return "Couldn't save just now. Check your connection and try again.";
+}
+
+function renderLetGo(it){
+  mode="letgo";
+  $("#dLabel").textContent="Letting go · "+tagNo(it.no);
+  let reason=null;
+  $("#dBody").innerHTML=`<div><h2 class="dtitle">${esc(it.name)}</h2><p class="dsub">It moves to <b>Let go</b> with the date and reason, so the history stays.</p></div>
+    <div class="reasons" id="reasons">${REASONS.map(([v,l])=>`<button type="button" data-r="${v}" aria-pressed="false">${l}</button>`).join("")}</div>
+    <div class="f2"><label class="fld">Date<input id="g_date" type="date" value="${today()}"></label>
+    <label class="fld" id="g_amtW">Sold for<input id="g_amt" inputmode="decimal" placeholder="0.00"></label></div>
+    <label class="fld">To whom / where <span class="h">optional</span><input id="g_to" placeholder="e.g. Facebook Marketplace, my brother"></label>
+    <p class="err" id="goErr" hidden></p>`;
+  $("#reasons").onclick=e=>{const b=e.target.closest("button");if(!b)return;reason=b.dataset.r;document.querySelectorAll("#reasons button").forEach(x=>x.setAttribute("aria-pressed",x===b));$("#g_amtW").hidden=reason!=="sold";};
+  const f=$("#dFoot"); f.hidden=false;
+  f.innerHTML=`<button class="btn ghost" id="gCancel">Keep it</button><button class="btn primary" id="gSave">Move to Let go</button>`;
+  $("#gCancel").onclick=()=>openItem(it.id);
+  $("#gSave").onclick=async()=>{
+    if(!reason){const e=$("#goErr");e.textContent="Pick what happened to it.";e.hidden=false;return;}
+    const closed=clean({date:$("#g_date").value||today(),reason,amount:reason==="sold"?numOrNull($("#g_amt").value):null,to:$("#g_to").value.trim()});
+    try{ await write(it.id,{status:"gone",closed}); toast("Moved to Let go"); openItem(it.id);}catch(e){const el=$("#goErr");el.textContent=writeError(e);el.hidden=false;}
+  };
+}
+
+/* photos */
+function pickPhoto(cb){ const p=$("#filePick"); p.value=""; p.onchange=()=>{const f=p.files[0]; if(f) cb(f);}; p.click(); }
+async function shrink(blob,max=1200){
+  try{
+    const bmp=await createImageBitmap(blob);
+    const s=Math.min(1,max/Math.max(bmp.width,bmp.height));
+    const c=document.createElement("canvas"); c.width=Math.round(bmp.width*s); c.height=Math.round(bmp.height*s);
+    c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+    return await new Promise(r=>c.toBlob(b=>r(b||blob),"image/jpeg",.86));
+  }catch(e){ return blob; }
+}
+async function savePhoto(id,blob,quiet){
+  if(!assets){ toast("Photo uploads need edit access."); return; }
+  try{
+    const small=await shrink(blob);
+    const up=await assets.upload(small,{type:small.type&&["image/jpeg","image/png","image/webp","image/gif"].includes(small.type)?small.type:"image/jpeg"});
+    await write(id,{photoId:up.id});
+    if(!quiet) toast("Photo saved");
+  }catch(e){ toast(e&&e.code==="too_large"?"That photo is too big. Try a smaller one.":e&&e.code==="unsupported_type"?"That file type isn't supported. Use JPG or PNG.":"Couldn't save the photo. Try again."); }
+}
+
+/* Drive photo import */
+let importing=false;
+function renderImportNote(){
+  const waiting=[...items.values()].filter(i=>i.driveId&&!i.photoId&&!i.photoFailed);
+  const n=$("#importNote");
+  if(!canWrite||!mcp||!assets||!waiting.length){ if(!importing) n.hidden=true; return; }
+  n.hidden=false;
+  if(!importing) $("#importText").innerHTML=`<b>${waiting.length} of your photos are still in Google Drive.</b> Bring them in once and they show on every card, for anyone you share this with.`;
+}
+function b64ToBlob(b64,type){ const bin=atob(b64); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i); return new Blob([u],{type}); }
+async function importPhotos(){
+  if(importing) return; importing=true;
+  const waiting=[...items.values()].filter(i=>i.driveId&&!i.photoId&&!i.photoFailed);
+  const btn=$("#importBtn"), bar=$("#importBar"), txt=$("#importText");
+  btn.disabled=true; bar.hidden=false; let done=0, failed=0;
+  const cache={};
+  for(const it of waiting){
+    txt.textContent=`Bringing in ${it.name}… (${done+1} of ${waiting.length})`;
+    try{
+      let blob=cache[it.driveId];
+      if(!blob){
+        const res=await mcp.callTool("Google Drive","download_file_content",{fileId:it.driveId},{cache:false});
+        let p=res.payload; if(typeof p==="string"){try{p=JSON.parse(p)}catch(e){}}
+        const b64=p&&(p.content||p.data||p.base64Content);
+        if(!b64) throw {code:"tool_error"};
+        blob=b64ToBlob(b64,(p.mimeType&&p.mimeType.startsWith("image/"))?p.mimeType:"image/jpeg");
+        blob=await shrink(blob); cache[it.driveId]=blob;
+      }
+      const up=await assets.upload(blob,{type:blob.type==="image/png"?"image/png":"image/jpeg"});
+      await db.doc("items/"+it.id).update({photoId:up.id});
+    }catch(e){
+      const c=e&&e.code;
+      if(c==="needs_reauth"){txt.textContent="Google Drive needs reconnecting. Reconnect it in claude.ai Settings → Connectors, then try again.";break;}
+      if(c==="server_not_connected"||c==="selection_required"){txt.textContent="Add the Google Drive connector in claude.ai Settings → Connectors, then try again.";break;}
+      if(c==="not_in_manifest"||c==="consent_required"){txt.textContent="Google Drive access wasn't allowed for this page. Tap the button to be asked again.";break;}
+      if(c==="blocked_by_policy"||c==="approval_required"){txt.textContent="Your organization blocks Google Drive here. You can still add photos one at a time.";break;}
+      if(c==="quota_or_state"){txt.textContent="Photo storage for this page is full.";break;}
+      failed++; try{ await db.doc("items/"+it.id).update({photoFailed:true}); }catch(_){}
+    }
+    done++; bar.firstElementChild.style.width=(done/waiting.length*100)+"%";
+  }
+  importing=false; btn.disabled=false; bar.hidden=true;
+  const left=[...items.values()].filter(i=>i.driveId&&!i.photoId&&!i.photoFailed).length;
+  if(!left){ toast(failed?`Photos in. ${failed} couldn't be opened; add those by hand.`:"All your photos are in"); renderImportNote(); }
+}
+
+/* Claude autofill */
+async function aiFill(){
+  const name=$("#f_name").value.trim(); if(!name){ $("#f_name").focus(); return; }
+  const b=$("#aiFill"); b.disabled=true; const old=b.innerHTML; b.textContent="Asking Claude…";
+  try{
+    const r=await sample.json(`You help catalogue a personal home inventory. Given an item name (and brand if known), return JSON only with keys:
+brand (string or ""), category (one of: ${ALL_CATS.join(", ")}), kind ("item"|"subscription"|"bill"|"document"), estimatedNewPrice (number USD or null), consumable (true if it's something people run out of and rebuy), trackValue (true only for items with a meaningful used resale market worth over about $100, like electronics, cameras, vehicles, instruments), notes (one short factual line or "").
+Item: ${JSON.stringify(name)}${$("#f_brand").value?" Brand: "+JSON.stringify($("#f_brand").value):""}`,{modelTier:"quick"});
+    if(r){
+      if(r.brand&&!$("#f_brand").value) $("#f_brand").value=r.brand;
+      if(r.kind){$("#f_kind").value=r.kind;$("#f_kind").onchange();}
+      if(r.category&&ALL_CATS.includes(r.category)) $("#f_cat").value=r.category;
+      if(r.estimatedNewPrice&&!$("#f_price").value) $("#f_price").value=r.estimatedNewPrice;
+      $("#f_cons").checked=!!r.consumable; $("#f_track").checked=!!r.trackValue;
+      if(r.notes&&!$("#f_notes").value) $("#f_notes").value=r.notes;
+      toast("Filled in. Check it over.");
+    }
+  }catch(e){ toast(e&&e.code==="rate_limited"?"Claude is busy. Try again in a minute.":"Couldn't fill it in this time."); }
+  b.disabled=false; b.innerHTML=old;
+}
+
+/* export */
+async function exportCsv(){
+  const cols=[["no","No."],["name","Item"],["brand","Brand"],["category","Category"],["kind","Type"],["status","Status"],["qty","Qty"],["price","Price paid"],["purchased","Date bought"],["value","Current value"],["valueUpdated","Value checked"],["cost","Recurring cost"],["period","Every"],["due","Due"],["serial","Serial/model"],["usage","Usage"],["location","Kept at"],["notes","Notes"]];
+  const rows=[cols.map(c=>c[1])].concat(sorted([...items.values()]).map(i=>cols.map(([k])=>i[k]??"")));
+  const csv=rows.map(r=>r.map(v=>{v=String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(",")).join("\n");
+  try{ await downloads.save({filename:"everything-i-own-"+today()+".csv",data:new Blob([csv],{type:"text/csv"})}); }catch(e){ if(e&&e.code!=="cancelled") toast("Couldn't create the file."); }
+}
+
+/* events */
+$("#view").addEventListener("click",e=>{const c=e.target.closest("[data-id]"); if(c) openItem(c.dataset.id);});
+$("#chips").addEventListener("click",e=>{const c=e.target.closest(".chip"); if(!c) return;
+  if(c.dataset.flag!==undefined){ flag=flag===c.dataset.flag?null:c.dataset.flag; } else { cat=c.dataset.cat||null; if(!c.dataset.cat) flag=null; }
+  render();});
+$("#tabs").addEventListener("click",e=>{const t=e.target.closest(".tab"); if(!t) return; tab=t.dataset.tab; cat=null; flag=null;
+  document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected",x===t)); render();});
+$("#q").addEventListener("input",e=>{query=e.target.value.trim().toLowerCase(); render();});
+$("#sort").addEventListener("change",e=>{sort=e.target.value; try{localStorage.setItem("inv.sort",sort)}catch(_){} render();});
+$("#vGrid").onclick=()=>{layout="grid";try{localStorage.setItem("inv.layout",layout)}catch(_){} render();};
+$("#vList").onclick=()=>{layout="list";try{localStorage.setItem("inv.layout",layout)}catch(_){} render();};
+$("#dClose").onclick=closeDrawer; $("#scrim").onclick=closeDrawer;
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("#drawer").classList.contains("on")) closeDrawer();});
+$("#addBtn").onclick=()=>renderForm(null); $("#fab").onclick=()=>renderForm(null);
+$("#importBtn").onclick=importPhotos;
+$("#exportBtn").onclick=exportCsv;
+
+/* boot: public snapshot */
+(function boot(){
+  let data={items:[]};
+  try{ data=JSON.parse(document.getElementById("inv-data").textContent); }catch(e){}
+  items=new Map(data.items.map(d=>[d.id,d]));
+  loaded=true; canWrite=false;
+  if(data.updated) $("#who").textContent="Erik's personal inventory · updated "+fmtDate(data.updated);
+  render();
+})();
+})();
+</script>
+
+</body></html>
